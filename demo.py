@@ -257,15 +257,15 @@ def createScene(root: SC.Node):
     # place light and a camera
     root.addObject("LightManager")
     root.addObject("DirectionalLight", name="spotlight", direction=[0,1,0])
-    root.addObject("InteractiveCamera", name="camera", position=[0,-10,0],
-                            lookAt=[0,0,0], distance=30,
-                            fieldOfView=45, zNear=0.63, zFar=55.69)
+    root.addObject("InteractiveCamera", name="camera", position=[-31.899, -10.3206, 29.9103],
+                            lookAt=[0,0,0], distance=10,
+                            fieldOfView=45, zNear=0.63, zFar=100)
     
     # root.addObject(SpotlightController(node=root))
 
     sphere = root.addChild("Liver")
-    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/liver.obj")
-    sphere.addObject("OglModel", src="@loader", color="red", dy=-10)
+    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
+    sphere.addObject("OglModel", src="@loader", color="red", dy=-10, ry=-90)
 
 
 def main():

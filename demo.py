@@ -50,6 +50,7 @@ in_out_zoom = 1
 left_right_angle = 0
 around_angle = 0
 translation = [0.0, 0.0, 0.0]
+offset = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
 
 class ImageLoader:
     
@@ -141,11 +142,12 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
+    glMultMatrixf(offset)
 
     pygame.display.flip()
 
 def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[int], zoom_mouse: int):
-    global up_down_angle, in_out_zoom, left_right_angle, around_angle, cur_state
+    global up_down_angle, in_out_zoom, left_right_angle, around_angle, cur_state, offset
     """
     Get the OpenGL context to render an image of the simulation state
 
@@ -185,37 +187,40 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
 
     #### Start the camera movement ####
     glPushMatrix()
+    glMultMatrixf(offset)
     # glLoadIdentity()
 
     # Move the object around
-    if keypress[pygame.K_w]:
-        translation[2] += 0.1
-    if keypress[pygame.K_s]:
-        translation[2] -= 0.1
-    if keypress[pygame.K_d]:
-        translation[0] += 0.1
-    if keypress[pygame.K_a]:
-        translation[0] -= 0.1
+    # if keypress[pygame.K_w]:
+    #     translation[2] += 0.1
+    # if keypress[pygame.K_s]:
+    #     translation[2] -= 0.1
+    # if keypress[pygame.K_d]:
+    #     translation[0] += 0.1
+    # if keypress[pygame.K_a]:
+    #     translation[0] -= 0.1
 
-    # Zoom the object with the mouse wheel
-    in_out_zoom -= zoom_mouse * 0.5
-    glTranslatef(translation[0], in_out_zoom, translation[2])
+    # # Zoom the object with the mouse wheel
+    # in_out_zoom -= zoom_mouse * 0.5
+    # glTranslatef(translation[0], in_out_zoom, translation[2])
 
-    # Rotate the object from left to right
-    left_right_angle += mouse_move[0]*0.05
-    glRotatef(left_right_angle, 0.0, 1.0, 0.0)
+    # # Rotate the object from left to right
+    # left_right_angle += mouse_move[0]*0.05
+    # glRotatef(left_right_angle, 0.0, 1.0, 0.0)
 
-    # Rotate the object up and down
-    up_down_angle += mouse_move[1]*0.05
-    glRotatef(up_down_angle, 1.0, 0.0, 0.0)
+    # # Rotate the object up and down
+    # up_down_angle += mouse_move[1]*0.05
+    # glRotatef(up_down_angle, 1.0, 0.0, 0.0)
 
     # Transform the original view
     # print(device_state.transform)
-    if keypress[pygame.K_SPACE]:
+    if device_state.button:
         glMultMatrixf(device_state.transform)
         cur_state = device_state.transform
+    
     else:
         glMultMatrixf(cur_state)
+        offset = cur_state
 
     glMultMatrixf(view_matrix)
     glGetFloatv(GL_MODELVIEW_MATRIX, view_matrix)
@@ -247,8 +252,8 @@ def createScene(root: SC.Node):
     root.addObject("RequiredPlugin", name="Sofa.Component.Visual")
     root.addObject("RequiredPlugin", name="Sofa.GL.Component.Rendering3D")
     root.addObject("RequiredPlugin", name="Sofa.GL.Component.Shader")
-    root.addObject("RequiredPlugin", name="SofaConstraint")
-    root.addObject("RequiredPlugin", name="SofaHaptics")
+    root.addObject("RequiredPlugin", name="Sofa.Component.Mapping.MappedMatrix")
+    root.addObject("RequiredPlugin", name="Sofa.Component.Haptics")
     root.addObject("RequiredPlugin", name="SofaMeshCollision")
     root.addObject("RequiredPlugin", name="SofaUserInteraction")
     root.addObject("RequiredPlugin", name="Sofa.Component.SceneUtility")
@@ -257,19 +262,18 @@ def createScene(root: SC.Node):
     # place light and a camera
     root.addObject("LightManager")
     root.addObject("DirectionalLight", name="spotlight", direction=[0,1,0])
-    root.addObject("InteractiveCamera", name="camera", position=[-31.899, -10.3206, 29.9103],
+    root.addObject("InteractiveCamera", name="camera", position=[0, -10, 0],
                             lookAt=[0,0,0], distance=10,
                             fieldOfView=45, zNear=0.63, zFar=100)
     
     # root.addObject(SpotlightController(node=root))
 
     sphere = root.addChild("Liver")
-    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
-    sphere.addObject("OglModel", src="@loader", color="red", dy=-10, ry=-90)
+    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/liver.obj")
+    sphere.addObject("OglModel", src="@loader", color="red", dy=-10)
 
 
 def main():
-    SofaRuntime.importPlugin("SofaComponentAll")
     im_loader=ImageLoader(10, 10)
     root = SC.Node("root")
     createScene(root)

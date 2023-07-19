@@ -21,6 +21,7 @@ class DeviceState:
     joints: list = field(default_factory=list)
     gimbals: list = field(default_factory=list)
     transform: list = field(default_factory=list)
+    translation: list = field(default_factory=list)
 
 @hd_callback
 def state_callback():
@@ -30,6 +31,8 @@ def state_callback():
                               [transform[0][1], transform[1][1], transform[2][1], 0.],
                               [transform[0][2], transform[1][2], transform[2][2], 0.],
                               [transform[0][3], transform[1][3], transform[2][3], transform[3][3]]]
+    
+    device_state.translation = [transform[3][0], transform[3][1], transform[3][2]]
     joints = hd.get_joints()
     gimbals = hd.get_gimbals()
     device_state.joints = [joints[0], joints[1], joints[2]]
@@ -50,7 +53,7 @@ in_out_zoom = 1
 left_right_angle = 0
 around_angle = 0
 translation = [0.0, 0.0, 0.0]
-offset = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+init_view = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
 
 class ImageLoader:
     
@@ -99,6 +102,7 @@ class ImageLoader:
 
 
 def init_display(node: SC.Node, im_loader: ImageLoader):
+    global init_view
     """
     Define the initial window for the pygame rendering
 
@@ -134,7 +138,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 50.0)
+    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 100.0)
     
     # Set the background to white
     # glClearColor(1, 1, 1, 1)
@@ -142,12 +146,15 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
-    glMultMatrixf(offset)
+    glMultMatrixf(init_view)
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     pygame.display.flip()
 
-def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[int], zoom_mouse: int):
-    global up_down_angle, in_out_zoom, left_right_angle, around_angle, cur_state, offset
+    return view_matrix
+
+def simple_render(rootNode: SC.Node, im_loader: ImageLoader, cur_view, pre_transform, mouse_move: List[int], zoom_mouse: int):
+    global up_down_angle, in_out_zoom, left_right_angle, around_angle, translation
     """
     Get the OpenGL context to render an image of the simulation state
 
@@ -175,7 +182,7 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 50.0)
+    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     
@@ -183,11 +190,11 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     cameraMVM = rootNode.camera.getOpenGLModelViewMatrix()
     glMultMatrixf(cameraMVM)
     glMatrixMode(GL_MODELVIEW)  
-    view_matrix= glGetFloatv(GL_MODELVIEW_MATRIX)
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     #### Start the camera movement ####
     glPushMatrix()
-    glMultMatrixf(offset)
+    # glMultMatrixf(cur_view)
     # glLoadIdentity()
 
     # Move the object around
@@ -204,33 +211,46 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     # in_out_zoom -= zoom_mouse * 0.5
     # glTranslatef(translation[0], in_out_zoom, translation[2])
 
+    # Move the object with the haptic device
+    if device_state.button:
+        translation = device_state.translation
+
+    glTranslatef(0.1 * translation[0], 0.1 * translation[2], 0.1 * translation[1])
+
     # # Rotate the object from left to right
     # left_right_angle += mouse_move[0]*0.05
-    # glRotatef(left_right_angle, 0.0, 1.0, 0.0)
+    # if device_state.button:
+    #     glRotatef(100 * device_state.joints[0], 0.0, 1.0, 0.0)
 
-    # # Rotate the object up and down
-    # up_down_angle += mouse_move[1]*0.05
-    # glRotatef(up_down_angle, 1.0, 0.0, 0.0)
+    #     # # Rotate the object up and down
+    #     # up_down_angle += mouse_move[1]*0.05
+    #     glRotatef(100 * device_state.joints[1], 1.0, 0.0, 0.0)
+    #     glRotatef(100 * device_state.joints[2], 0.0, 0.0, 1.0)
+    
+    # else:
+    #     glMultMatrixf(cur_view)
 
     # Transform the original view
     # print(device_state.transform)
-    if device_state.button:
-        glMultMatrixf(device_state.transform)
-        cur_state = device_state.transform
-    
-    else:
-        glMultMatrixf(cur_state)
-        offset = cur_state
+
+    # if device_state.button:
+    #     offset = np.linalg.inv(pre_transform) @ device_state.transform
+    #     glMultMatrixf(offset)
+
+    # else:
+
+    #     glMultMatrixf(pre_transform)
 
     glMultMatrixf(view_matrix)
-    glGetFloatv(GL_MODELVIEW_MATRIX, view_matrix)
-
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+    view_offset = np.linalg.inv(np.array(cameraMVM).reshape(4, 4)) @ np.array(view_matrix)
+    
     SG.draw(rootNode)
     glPopMatrix()
 
     pygame.display.flip()
 
-
+    return view_offset, pre_transform
 
 def createScene(root: SC.Node):
     """
@@ -274,23 +294,27 @@ def createScene(root: SC.Node):
 
 
 def main():
+    global pre_transform
     im_loader=ImageLoader(10, 10)
     root = SC.Node("root")
     createScene(root)
     SS.init(root)
-    init_display(root, im_loader)
+    cur_view = init_display(root, im_loader)
     done = False
     mouse_move = [0, 0]
     zoom_mouse = 0.0
     paused = False
+    clock = pygame.time.Clock()
 
     pygame.mouse.set_pos(display_center)
+    pre_transform = [device_state.transform]
 
     while not done:
+        clock.tick(100)
         SS.animate(root, root.getDt())
         SS.updateVisual(root)
         if not paused:
-            simple_render(root, im_loader, mouse_move, zoom_mouse)
+            cur_view, pre_transform = simple_render(root, im_loader, cur_view, pre_transform, mouse_move, zoom_mouse)
         zoom_mouse = 0.0
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -299,7 +323,6 @@ def main():
                 if event.key == pygame.K_PAUSE or event.key == pygame.K_p:
                     paused = not paused
                     pygame.mouse.set_pos(display_center)
-
             if not paused:
                 if event.type == pygame.MOUSEMOTION:
                     mouse_move = [event.pos[i] - display_center[i] for i in range(2)]
@@ -309,6 +332,8 @@ def main():
         time.sleep(root.getDt())
 
     pygame.quit()
+
+
 if __name__ == "__main__":
     device_state = DeviceState()
     device = HapticDevice(callback=state_callback)

@@ -107,14 +107,14 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glDisable(GL_DEPTH_TEST)
-    glViewport(0, 0, 600, 600)
+    glViewport(1620, 780, 300, 300)
     glClearColor(1, 1, 1, 1)
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluOrtho2D(0, 600, 600, 1)
+    gluOrtho2D(0, 300, 300, 1)
     glMatrixMode(GL_MODELVIEW)
 
 
@@ -126,7 +126,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (600 / 600), 0.1, 100.0)
+    gluPerspective(45, (300 / 300), 0.1, 100.0)
     
     # Set the background to white
     # glClearColor(1, 1, 1, 1)
@@ -175,12 +175,14 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     glLoadIdentity()
     
     # Get the projection from the Sofa scene
-    cameraMVM = rootNode.camera.getOpenGLModelViewMatrix()
+    cameraMVM = rootNode.detailed_camera.getOpenGLModelViewMatrix()
     glMultMatrixf(cameraMVM)
     glMatrixMode(GL_MODELVIEW)  
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     glPushMatrix()
+    glTranslatef(8., 0., 0.)
+    glRotatef(90., 0., 0., 1.)
 
     glMultMatrixf(view_matrix)
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
@@ -189,10 +191,12 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     glPopMatrix()
     
     # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glViewport(0, 0, 600, 600)
+    glViewport(1620, 780, 300, 300)
+    glDepthMask(False)
+    glClearColor(1, 1, 1, 1)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluOrtho2D(0, 600, 600, 1)
+    gluOrtho2D(0, 300, 300, 1)
     glMatrixMode(GL_MODELVIEW)
 
     # Draw the logo
@@ -206,12 +210,12 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (600 / 600), 0.1, 100.0)
+    gluPerspective(45, (300 / 300), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     
     # Get the projection from the Sofa scene
-    cameraMVM = rootNode.camera.getOpenGLModelViewMatrix()
+    cameraMVM = rootNode.global_camera.getOpenGLModelViewMatrix()
     glMultMatrixf(cameraMVM)
     glMatrixMode(GL_MODELVIEW)  
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
@@ -228,34 +232,32 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     if keypress[pygame.K_s]:
         translation[2] -= 0.1
     if keypress[pygame.K_d]:
-        translation[0] += 0.1
-    if keypress[pygame.K_a]:
         translation[0] -= 0.1
+    if keypress[pygame.K_a]:
+        translation[0] += 0.1
 
     # # Zoom the object with the mouse wheel
-    in_out_zoom -= zoom_mouse * 0.5
-    glTranslatef(translation[0], in_out_zoom, translation[2])
+    in_out_zoom += zoom_mouse * 0.5
+    glTranslatef(in_out_zoom, translation[2], translation[0])
 
     # Move the object with the haptic device
     # if device_state.button:
     #     translation = device_state.translation
-
-    glTranslatef(0.1 * translation[0], 0.1 * translation[2], 0.1 * translation[1])
 
     # Rotate the object from left to right
     left_right_angle += mouse_move[0]*0.05
     glRotatef(left_right_angle, 0.0, 1.0, 0.0)
 
     # Rotate the object up and down
-    up_down_angle += mouse_move[1]*0.05
-    glRotatef(up_down_angle, 1.0, 0.0, 0.0)
+    up_down_angle -= mouse_move[1]*0.05
+    glRotatef(up_down_angle, 0.0, 0.0, 1.0)
 
     glMultMatrixf(view_matrix)
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
     
     SG.draw(rootNode)
     glPopMatrix()
-    
+    glDepthMask(True)
 
     pygame.display.flip()
 
@@ -290,16 +292,20 @@ def createScene(root: SC.Node):
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[1,0,0])
+    root.addObject("DirectionalLight", name="spotlight", direction=[0,0,-1])
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
-                            lookAt=[0,0,0], distance=10,
+                            lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
+    
+    root.addObject("InteractiveCamera", name="detailed_camera", position=[10.0, 0., 0.],
+                   lookAt=[0.1,0.1,0], distance=0,
+                   fieldOfView=45, zNear=0.63, zFar=100)
     
     # root.addObject(SpotlightController(node=root))
 
-    sphere = root.addChild("Colon")
-    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
-    sphere.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=0, scale=0.03)
+    colon = root.addChild("Colon")
+    colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
+    colon.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
 
 
 def main():
@@ -314,6 +320,7 @@ def main():
     zoom_mouse = 0.0
     move_camera = False
     paused = False
+    change_view = False
     clock = pygame.time.Clock()
 
     pygame.mouse.set_pos(display_center)
@@ -324,7 +331,7 @@ def main():
         SS.updateVisual(root)
         if not paused:
             simple_render(root, im_loader, mouse_move, zoom_mouse, move_camera)
-
+        
         zoom_mouse = 0.0
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -335,9 +342,14 @@ def main():
                     pygame.mouse.set_pos(display_center)
             if not paused:
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    move_camera = True
+                    if event.button == 1:
+                        move_camera = True
+                    elif event.button == 3:
+                        change_view = not change_view
+                    
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    move_camera = False
+                    if event.button == 1:
+                        move_camera = False
                 if event.type == pygame.MOUSEWHEEL:
                     zoom_mouse = event.y
 

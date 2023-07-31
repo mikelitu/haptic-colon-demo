@@ -9,11 +9,12 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from typing import List
-import pyOpenHaptics.hd as hd
-from pyOpenHaptics.hd_callback import hd_callback
-from pyOpenHaptics.hd_device import HapticDevice
+# import pyOpenHaptics.hd as hd
+# from pyOpenHaptics.hd_callback import hd_callback
+# from pyOpenHaptics.hd_device import HapticDevice
 from dataclasses import dataclass, field
 import numpy as np
+from utils import ImageLoader
 
 @dataclass
 class DeviceState:
@@ -23,22 +24,22 @@ class DeviceState:
     transform: list = field(default_factory=list)
     translation: list = field(default_factory=list)
 
-@hd_callback
-def state_callback():
-    global device_state
-    transform = hd.get_transform()
-    device_state.transform = [[transform[0][0], transform[1][0], transform[2][0], 0.],
-                              [transform[0][1], transform[1][1], transform[2][1], 0.],
-                              [transform[0][2], transform[1][2], transform[2][2], 0.],
-                              [transform[0][3], transform[1][3], transform[2][3], transform[3][3]]]
+# @hd_callback
+# def state_callback():
+#     global device_state
+#     transform = hd.get_transform()
+#     device_state.transform = [[transform[0][0], transform[1][0], transform[2][0], 0.],
+#                               [transform[0][1], transform[1][1], transform[2][1], 0.],
+#                               [transform[0][2], transform[1][2], transform[2][2], 0.],
+#                               [transform[0][3], transform[1][3], transform[2][3], transform[3][3]]]
     
-    device_state.translation = [transform[3][0], transform[3][1], transform[3][2]]
-    joints = hd.get_joints()
-    gimbals = hd.get_gimbals()
-    device_state.joints = [joints[0], joints[1], joints[2]]
-    device_state.gimbals = [gimbals[0], gimbals[1], gimbals[2]]
-    button = hd.get_buttons()
-    device_state.button = True if button==1 else False
+#     device_state.translation = [transform[3][0], transform[3][1], transform[3][2]]
+#     joints = hd.get_joints()
+#     gimbals = hd.get_gimbals()
+#     device_state.joints = [joints[0], joints[1], joints[2]]
+#     device_state.gimbals = [gimbals[0], gimbals[1], gimbals[2]]
+#     button = hd.get_buttons()
+#     device_state.button = True if button==1 else False
 
 # Directory to the different logos
 logo_dir = "logos/kings-logo.png"
@@ -55,50 +56,7 @@ around_angle = 0
 translation = [0.0, 0.0, 0.0]
 init_view = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
 
-class ImageLoader:
-    
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.width = 0
-        self.height = 0
-        self.img_data = 0
-    
-    def load(self, im_dir):
-        image = pygame.image.load(im_dir).convert_alpha()
-        img_data = pygame.image.tostring(image, 'RGBA')
-        self.width = image.get_width()
-        self.height = image.get_height()
 
-        self.texID = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, self.texID)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.width, self.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, img_data)
-        glGenerateMipmap(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, 0)     
-
-    def draw(self):
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
-        glTranslate(self.x, self.y, 0)
-
-        glEnable(GL_TEXTURE_2D)
-        glBindTexture(GL_TEXTURE_2D, self.texID)
-        glBegin(GL_QUADS)
-        glTexCoord2f(0, 0)
-        glVertex2f(0, 0)
-        glTexCoord2f(1, 0)
-        glVertex2f(self.width, 0)
-        glTexCoord2f(1, 1)
-        glVertex2f(self.width, self.height)
-        glTexCoord2f(0, 1)
-        glVertex2f(0, self.height)
-        glEnd()
-        glDisable(GL_TEXTURE_2D)
 
 
 def init_display(node: SC.Node, im_loader: ImageLoader):
@@ -117,6 +75,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
+    glViewport(0, 0, display_size[0], display_size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluOrtho2D(0, display_size[0], display_size[1], 1)
@@ -124,11 +83,8 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
 
     # Draw the logo
     glLoadIdentity()
-    glDisable(GL_DEPTH_TEST)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    im_loader.load(logo_dir)
-    im_loader.draw()
 
     glEnable(GL_LIGHTING)
     glEnable(GL_DEPTH_TEST)
@@ -149,11 +105,43 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     glMultMatrixf(init_view)
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
+    # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glDisable(GL_DEPTH_TEST)
+    glViewport(0, 0, 600, 600)
+    glClearColor(1, 1, 1, 1)
+    
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(0, 600, 600, 1)
+    glMatrixMode(GL_MODELVIEW)
+
+
+    glEnable(GL_LIGHTING)
+    glEnable(GL_DEPTH_TEST)
+    SG.glewInit()
+    SS.initVisual(node)
+    SS.initTextures(node)
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45, (600 / 600), 0.1, 100.0)
+    
+    # Set the background to white
+    # glClearColor(1, 1, 1, 1)
+    # glClear(GL_COLOR_BUFFER_BIT)
+
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glMultMatrixf(init_view)
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+
     pygame.display.flip()
 
     return view_matrix
 
-def simple_render(rootNode: SC.Node, im_loader: ImageLoader, cur_view, pre_transform, mouse_move: List[int], zoom_mouse: int):
+def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[int], zoom_mouse: int, move_camera: bool):
     global up_down_angle, in_out_zoom, left_right_angle, around_angle, translation
     """
     Get the OpenGL context to render an image of the simulation state
@@ -165,6 +153,7 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, cur_view, pre_trans
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     
+    glViewport(0, 0, display_size[0], display_size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluOrtho2D(0, display_size[0], display_size[1], 1)
@@ -175,7 +164,6 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, cur_view, pre_trans
     glDisable(GL_DEPTH_TEST)
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    im_loader.draw()
 
     glEnable(GL_LIGHTING)
     glEnable(GL_DEPTH_TEST)
@@ -192,65 +180,85 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, cur_view, pre_trans
     glMatrixMode(GL_MODELVIEW)  
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
+    glPushMatrix()
+
+    glMultMatrixf(view_matrix)
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+    
+    SG.draw(rootNode)
+    glPopMatrix()
+    
+    # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    glViewport(0, 0, 600, 600)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(0, 600, 600, 1)
+    glMatrixMode(GL_MODELVIEW)
+
+    # Draw the logo
+    glLoadIdentity()
+    glDisable(GL_DEPTH_TEST)
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    glEnable(GL_LIGHTING)
+    glEnable(GL_DEPTH_TEST)
+    
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45, (600 / 600), 0.1, 100.0)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    
+    # Get the projection from the Sofa scene
+    cameraMVM = rootNode.camera.getOpenGLModelViewMatrix()
+    glMultMatrixf(cameraMVM)
+    glMatrixMode(GL_MODELVIEW)  
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+
+    
     #### Start the camera movement ####
     glPushMatrix()
     # glMultMatrixf(cur_view)
     # glLoadIdentity()
 
     # Move the object around
-    # if keypress[pygame.K_w]:
-    #     translation[2] += 0.1
-    # if keypress[pygame.K_s]:
-    #     translation[2] -= 0.1
-    # if keypress[pygame.K_d]:
-    #     translation[0] += 0.1
-    # if keypress[pygame.K_a]:
-    #     translation[0] -= 0.1
+    if keypress[pygame.K_w]:
+        translation[2] += 0.1
+    if keypress[pygame.K_s]:
+        translation[2] -= 0.1
+    if keypress[pygame.K_d]:
+        translation[0] += 0.1
+    if keypress[pygame.K_a]:
+        translation[0] -= 0.1
 
     # # Zoom the object with the mouse wheel
-    # in_out_zoom -= zoom_mouse * 0.5
-    # glTranslatef(translation[0], in_out_zoom, translation[2])
+    in_out_zoom -= zoom_mouse * 0.5
+    glTranslatef(translation[0], in_out_zoom, translation[2])
 
     # Move the object with the haptic device
-    if device_state.button:
-        translation = device_state.translation
+    # if device_state.button:
+    #     translation = device_state.translation
 
     glTranslatef(0.1 * translation[0], 0.1 * translation[2], 0.1 * translation[1])
 
-    # # Rotate the object from left to right
-    # left_right_angle += mouse_move[0]*0.05
-    # if device_state.button:
-    #     glRotatef(100 * device_state.joints[0], 0.0, 1.0, 0.0)
+    # Rotate the object from left to right
+    left_right_angle += mouse_move[0]*0.05
+    glRotatef(left_right_angle, 0.0, 1.0, 0.0)
 
-    #     # # Rotate the object up and down
-    #     # up_down_angle += mouse_move[1]*0.05
-    #     glRotatef(100 * device_state.joints[1], 1.0, 0.0, 0.0)
-    #     glRotatef(100 * device_state.joints[2], 0.0, 0.0, 1.0)
-    
-    # else:
-    #     glMultMatrixf(cur_view)
-
-    # Transform the original view
-    # print(device_state.transform)
-
-    # if device_state.button:
-    #     offset = np.linalg.inv(pre_transform) @ device_state.transform
-    #     glMultMatrixf(offset)
-
-    # else:
-
-    #     glMultMatrixf(pre_transform)
+    # Rotate the object up and down
+    up_down_angle += mouse_move[1]*0.05
+    glRotatef(up_down_angle, 1.0, 0.0, 0.0)
 
     glMultMatrixf(view_matrix)
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
-    view_offset = np.linalg.inv(np.array(cameraMVM).reshape(4, 4)) @ np.array(view_matrix)
     
     SG.draw(rootNode)
     glPopMatrix()
+    
 
     pygame.display.flip()
 
-    return view_offset, pre_transform
 
 def createScene(root: SC.Node):
     """
@@ -278,19 +286,20 @@ def createScene(root: SC.Node):
     root.addObject("RequiredPlugin", name="SofaUserInteraction")
     root.addObject("RequiredPlugin", name="Sofa.Component.SceneUtility")
     root.addObject("RequiredPlugin", name="SofaPython3")
+    root.addObject("RequiredPlugin", name="BeamAdapter")
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[0,1,0])
-    root.addObject("InteractiveCamera", name="camera", position=[0, -10, 0],
+    root.addObject("DirectionalLight", name="spotlight", direction=[1,0,0])
+    root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=10,
                             fieldOfView=45, zNear=0.63, zFar=100)
     
     # root.addObject(SpotlightController(node=root))
 
-    sphere = root.addChild("Liver")
-    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/liver.obj")
-    sphere.addObject("OglModel", src="@loader", color="red", dy=-10)
+    sphere = root.addChild("Colon")
+    sphere.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
+    sphere.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=0, scale=0.03)
 
 
 def main():
@@ -299,22 +308,23 @@ def main():
     root = SC.Node("root")
     createScene(root)
     SS.init(root)
-    cur_view = init_display(root, im_loader)
+    init_display(root, im_loader)
     done = False
     mouse_move = [0, 0]
     zoom_mouse = 0.0
+    move_camera = False
     paused = False
     clock = pygame.time.Clock()
 
     pygame.mouse.set_pos(display_center)
-    pre_transform = [device_state.transform]
 
     while not done:
         clock.tick(100)
         SS.animate(root, root.getDt())
         SS.updateVisual(root)
         if not paused:
-            cur_view, pre_transform = simple_render(root, im_loader, cur_view, pre_transform, mouse_move, zoom_mouse)
+            simple_render(root, im_loader, mouse_move, zoom_mouse, move_camera)
+
         zoom_mouse = 0.0
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -324,20 +334,29 @@ def main():
                     paused = not paused
                     pygame.mouse.set_pos(display_center)
             if not paused:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    move_camera = True
+                elif event.type == pygame.MOUSEBUTTONUP:
+                    move_camera = False
+                if event.type == pygame.MOUSEWHEEL:
+                    zoom_mouse = event.y
+
+                if not move_camera:
+                    continue
+
                 if event.type == pygame.MOUSEMOTION:
                     mouse_move = [event.pos[i] - display_center[i] for i in range(2)]
                     pygame.mouse.set_pos(display_center)
-                if event.type == pygame.MOUSEWHEEL:
-                    zoom_mouse = event.y
+                
         time.sleep(root.getDt())
 
     pygame.quit()
 
 
 if __name__ == "__main__":
-    device_state = DeviceState()
-    device = HapticDevice(callback=state_callback)
+    # device_state = DeviceState()
+    # device = HapticDevice(callback=state_callback)
     time.sleep(0.4)
-    cur_state = device_state.transform
+    # cur_state = device_state.transform
     main()
-    device.close()
+    # device.close()

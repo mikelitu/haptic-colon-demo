@@ -14,7 +14,7 @@ from typing import List
 # from pyOpenHaptics.hd_device import HapticDevice
 from dataclasses import dataclass, field
 import numpy as np
-from utils import ImageLoader
+from utils import ImageLoader, create_sofa_window
 
 @dataclass
 class DeviceState:
@@ -45,8 +45,12 @@ class DeviceState:
 logo_dir = "logos/kings-logo.png"
 
 # Create the pygame widnow size and flags for debugging and final demo
-display_size = (1920, 1080)
-display_center = (display_size[0] // 2, display_size[1] // 2)
+big_display_size = (1920, 1080)
+big_display_center = (big_display_size[0] // 2, big_display_size[1] // 2)
+big_position = [0, 0]
+small_display_size = (300, 300)
+small_display_center = (1620 + small_display_size[0] // 2, 780 + small_display_size[1] // 2)
+small_position = [1620, 780]
 deb_flags = pygame.DOUBLEBUF | pygame.OPENGL
 flags = pygame.DOUBLEBUF | pygame.OPENGL | pygame.FULLSCREEN
 up_down_angle = 0
@@ -55,7 +59,6 @@ left_right_angle = 0
 around_angle = 0
 translation = [0.0, 0.0, 0.0]
 init_view = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-
 
 
 
@@ -68,80 +71,20 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
         node (SC.Node): Root node for a Sofa simulation scene
     """
     pygame.display.init()
-    pygame.display.set_mode(display_size, deb_flags)
-    pygame.display.set_caption("Pygame logo")
+    pygame.display.set_mode(big_display_size, deb_flags)
+    pygame.display.set_caption("Colon simulation")
     pygame.mouse.set_visible(False)
     glClearColor(1, 1, 1, 1)
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-    glViewport(0, 0, display_size[0], display_size[1])
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluOrtho2D(0, display_size[0], display_size[1], 1)
-    glMatrixMode(GL_MODELVIEW)
-
-    # Draw the logo
-    glLoadIdentity()
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    glEnable(GL_LIGHTING)
-    glEnable(GL_DEPTH_TEST)
-    SG.glewInit()
-    SS.initVisual(node)
-    SS.initTextures(node)
-
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 100.0)
-    
-    # Set the background to white
-    # glClearColor(1, 1, 1, 1)
-    # glClear(GL_COLOR_BUFFER_BIT)
-
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glMultMatrixf(init_view)
-    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
-
-    # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glDisable(GL_DEPTH_TEST)
-    glViewport(1620, 780, 300, 300)
-    glClearColor(1, 1, 1, 1)
-    
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluOrtho2D(0, 300, 300, 1)
-    glMatrixMode(GL_MODELVIEW)
-
-
-    glEnable(GL_LIGHTING)
-    glEnable(GL_DEPTH_TEST)
-    SG.glewInit()
-    SS.initVisual(node)
-    SS.initTextures(node)
-
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective(45, (300 / 300), 0.1, 100.0)
-    
-    # Set the background to white
-    # glClearColor(1, 1, 1, 1)
-    # glClear(GL_COLOR_BUFFER_BIT)
-
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glMultMatrixf(init_view)
-    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+    create_sofa_window(big_position, big_display_size, node)
+    create_sofa_window(small_position, small_display_size, node)
 
     pygame.display.flip()
 
-    return view_matrix
 
-def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[int], zoom_mouse: int, move_camera: bool):
+def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[int], zoom_mouse: int, change_view: bool):
     global up_down_angle, in_out_zoom, left_right_angle, around_angle, translation
     """
     Get the OpenGL context to render an image of the simulation state
@@ -153,10 +96,10 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     
-    glViewport(0, 0, display_size[0], display_size[1])
+    glViewport(0, 0, big_display_size[0], big_display_size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluOrtho2D(0, display_size[0], display_size[1], 1)
+    gluOrtho2D(0, big_display_size[0], big_display_size[1], 1)
     glMatrixMode(GL_MODELVIEW)
 
     # Draw the logo
@@ -170,7 +113,7 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (display_size[0] / display_size[1]), 0.1, 100.0)
+    gluPerspective(45, (big_display_size[0] / big_display_size[1]), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     
@@ -190,13 +133,16 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     SG.draw(rootNode)
     glPopMatrix()
     
-    # glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-    glViewport(1620, 780, 300, 300)
+    glClear(GL_DEPTH_BUFFER_BIT)
+    # glEnable(GL_SCISSOR_TEST)
+    # glScissor(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
+    # glClearColor(1, 1, 1, 1)
+    glViewport(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
     glDepthMask(False)
-    glClearColor(1, 1, 1, 1)
+    # glColor(1, 1, 1, 1)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluOrtho2D(0, 300, 300, 1)
+    gluOrtho2D(0, small_display_size[0], small_display_size[1], 1)
     glMatrixMode(GL_MODELVIEW)
 
     # Draw the logo
@@ -210,7 +156,7 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    gluPerspective(45, (300 / 300), 0.1, 100.0)
+    gluPerspective(45, (small_display_size[0] / small_display_size[1]), 0.1, 100.0)
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     
@@ -323,7 +269,7 @@ def main():
     change_view = False
     clock = pygame.time.Clock()
 
-    pygame.mouse.set_pos(display_center)
+    pygame.mouse.set_pos(small_display_center)
 
     while not done:
         clock.tick(100)
@@ -339,7 +285,7 @@ def main():
                     done = True
                 if event.key == pygame.K_PAUSE or event.key == pygame.K_p:
                     paused = not paused
-                    pygame.mouse.set_pos(display_center)
+                    pygame.mouse.set_pos(small_display_center)
             if not paused:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:
@@ -357,8 +303,8 @@ def main():
                     continue
 
                 if event.type == pygame.MOUSEMOTION:
-                    mouse_move = [event.pos[i] - display_center[i] for i in range(2)]
-                    pygame.mouse.set_pos(display_center)
+                    mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
+                    pygame.mouse.set_pos(small_display_center)
                 
         time.sleep(root.getDt())
 

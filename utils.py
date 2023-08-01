@@ -1,6 +1,8 @@
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import pygame
+import Sofa.SofaGL as SG
+import Sofa.Simulation as SS
 
 
 class ImageLoader:
@@ -48,3 +50,77 @@ class ImageLoader:
         glEnd()
         glDisable(GL_TEXTURE_2D)
 
+
+class SofaPygameWindow(object):
+    def __init__(self, position, size, node, camera) -> None:
+        self.position = position
+        self.size = size
+        self.node = node
+        self.camera = camera
+        self.create_window()
+
+    def update(self) -> None:
+        pass
+
+    def create_window(self, main_display: bool):
+        if main_display:
+            glClearColor(1, 1, 1, 1)
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glViewport(self.position[0], self.position[1], self.size[0], self.size[1])
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluOrtho2D(0, self.size[0], self.size[1], 1)
+        glMatrixMode(GL_MODELVIEW)
+
+        # Draw the logo
+        glLoadIdentity()
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+        glEnable(GL_LIGHTING)
+        glEnable(GL_DEPTH_TEST)
+        SG.glewInit()
+        SS.initVisual(self.node)
+        SS.initTextures(self.node)
+
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(45, (self.size[0] / self.size[1]), 0.1, 100.0)
+
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+
+def create_sofa_window(position, size, node):
+    glViewport(position[0], position[1], size[0], size[1])
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(0, size[0], size[1], 1)
+    glMatrixMode(GL_MODELVIEW)
+
+    # Draw the logo
+    glLoadIdentity()
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+
+    glEnable(GL_LIGHTING)
+    glEnable(GL_DEPTH_TEST)
+    SG.glewInit()
+    SS.initVisual(node)
+    SS.initTextures(node)
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45, (size[0] / size[1]), 0.1, 100.0)
+    
+    # Set the background to white
+    # glClearColor(1, 1, 1, 1)
+    # glClear(GL_COLOR_BUFFER_BIT)
+
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+
+
+def render_sofa_window(position, size, node, camera, ):
+    pass

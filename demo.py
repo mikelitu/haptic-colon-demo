@@ -252,15 +252,15 @@ def createScene(root: SC.Node):
     # root.addObject(SpotlightController(node=root))
 
     colon = root.addChild("Colon")
-    colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate.obj")
+    colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     colon.addObject("MeshTopology", src="@loader")
     colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     colon.addObject("TriangleCollisionModel", group=1)
     colon.addObject("LineCollisionModel", group=1)
     colon.addObject("PointCollisionModel", group=1)
     visu_colon = colon.addChild("Visu")
-    visu_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon.obj")
-    visu_colon.addObject("OglModel", src="@loader", color="red")
+    visu_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    visu_colon.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
 

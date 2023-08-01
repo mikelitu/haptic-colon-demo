@@ -15,6 +15,7 @@ from typing import List
 from dataclasses import dataclass, field
 import numpy as np
 from utils import ImageLoader, create_sofa_window
+from controller import MoveSphere
 
 @dataclass
 class DeviceState:
@@ -233,10 +234,11 @@ def createScene(root: SC.Node):
     root.addObject("RequiredPlugin", name="SofaMeshCollision")
     root.addObject("RequiredPlugin", name="SofaUserInteraction")
     root.addObject("RequiredPlugin", name="Sofa.Component.SceneUtility")
+    root.addObject("RequiredPlugin", name="Sofa.Component.SolidMechanics.FEM.Elastic")
     root.addObject("RequiredPlugin", name="SofaPython3")
     root.addObject("RequiredPlugin", name="BeamAdapter")
 
-    root.addObject("VisualStyle", displayFlags="hideCollisionModels showVisualModels")
+    root.addObject("VisualStyle", displayFlags="showCollisionModels showVisualModels hideForceFields")
 
     # place light and a camera
     root.addObject("LightManager")
@@ -251,13 +253,26 @@ def createScene(root: SC.Node):
     
     # root.addObject(SpotlightController(node=root))
 
+    sphere = root.addChild("Sphere")
+    sphere.addObject("MechanicalObject", name="DOF", template="Vec3d", position=[9.6, 0.5, 0.0])
+    sphere.addObject("SphereCollisionModel", group=2, radius=0.15)
+
+    root.addObject(MoveSphere(sphere=sphere["DOF"]))
+
     colon = root.addChild("Colon")
     colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     colon.addObject("MeshTopology", src="@loader")
     colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
-    colon.addObject("TriangleCollisionModel", group=1)
-    colon.addObject("LineCollisionModel", group=1)
-    colon.addObject("PointCollisionModel", group=1)
+    colon.addObject("TriangleFEMForceField", name="FEM", youngModulus=3e3, poissonRatio=0.4, method="large")
+    colon.addObject("UniformMass", name="mass")
+    col_colon = colon.addChild("Collision", activated=False)
+    col_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    col_colon.addObject("MeshTopology", src="@loader")
+    col_colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    col_colon.addObject("TriangleCollisionModel", group=1)
+    col_colon.addObject("LineCollisionModel", group=1)
+    col_colon.addObject("PointCollisionModel", group=1)
+    col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
     visu_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     visu_colon.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)

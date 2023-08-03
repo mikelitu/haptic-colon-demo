@@ -227,16 +227,34 @@ def createScene(root: SC.Node):
     root.addObject("RequiredPlugin", name="Sofa.Component.StateContainer")
     root.addObject("RequiredPlugin", name="Sofa.Component.Topology.Container.Constant")
     root.addObject("RequiredPlugin", name="Sofa.Component.Visual")
+    root.addObject("RequiredPlugin", name="Sofa.Component.AnimationLoop")
     root.addObject("RequiredPlugin", name="Sofa.GL.Component.Rendering3D")
     root.addObject("RequiredPlugin", name="Sofa.GL.Component.Shader")
     root.addObject("RequiredPlugin", name="Sofa.Component.Mapping.MappedMatrix")
     root.addObject("RequiredPlugin", name="Sofa.Component.Haptics")
-    root.addObject("RequiredPlugin", name="SofaMeshCollision")
-    root.addObject("RequiredPlugin", name="SofaUserInteraction")
     root.addObject("RequiredPlugin", name="Sofa.Component.SceneUtility")
+    root.addObject('RequiredPlugin', name='Sofa.Component.LinearSolver.Iterative') # Needed to use components [CGLinearSolver]
     root.addObject("RequiredPlugin", name="Sofa.Component.SolidMechanics.FEM.Elastic")
+    root.addObject('RequiredPlugin', name='Sofa.Component.Collision.Detection.Algorithm') # Needed to use components [BVHNarrowPhase,BruteForceBroadPhase,CollisionPipeline]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Collision.Detection.Intersection') # Needed to use components [LocalMinDistance]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Collision.Geometry') # Needed to use components [SphereCollisionModel]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Collision.Response.Contact') # Needed to use components [CollisionResponse]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Lagrangian.Solver') # Needed to use components [LCPConstraintSolver]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Mapping.Linear') # Needed to use components [BarycentricMapping]
+    root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Lagrangian.Correction') # Needed to use components [UncoupledConstraintCorrection]
+    root.addObject('RequiredPlugin', name='Sofa.Component.Engine.Select') # Needed to use components [BoxROI]
+    root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Projective') # Needed to use components [FixedConstraint] 
     root.addObject("RequiredPlugin", name="SofaPython3")
     root.addObject("RequiredPlugin", name="BeamAdapter")
+
+    root.addObject("CollisionPipeline")
+    root.addObject("CollisionResponse")
+    root.addObject("BruteForceBroadPhase")
+    root.addObject("BVHNarrowPhase")
+    root.addObject("LocalMinDistance", alarmDistance=0.3, contactDistance=0.1)
+
+    root.addObject("LCPConstraintSolver", tolerance=1e-3, maxIt=1e3)
+    root.addObject("FreeMotionAnimationLoop")
 
     root.addObject("VisualStyle", displayFlags="showCollisionModels showVisualModels hideForceFields")
 
@@ -255,26 +273,31 @@ def createScene(root: SC.Node):
 
     sphere = root.addChild("Sphere")
     sphere.addObject("MechanicalObject", name="DOF", template="Vec3d", position=[9.6, 0.5, 0.0])
-    sphere.addObject("SphereCollisionModel", group=2, radius=0.15)
+    sphere.addObject("SphereCollisionModel", group=1, radius=0.15)
 
     root.addObject(MoveSphere(sphere=sphere["DOF"]))
 
     colon = root.addChild("Colon")
-    colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    colon.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
+    colon.addObject("CGLinearSolver", iterations=50, tolerance=1e-10, threshold=1e-15)
+    colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     colon.addObject("MeshTopology", src="@loader")
     colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
-    colon.addObject("TriangleFEMForceField", name="FEM", youngModulus=3e3, poissonRatio=0.4, method="large")
+    colon.addObject("TriangleFEMForceField", name="FEM", youngModulus=1e8, poissonRatio=0.4, method="large")
     colon.addObject("UniformMass", name="mass")
+    colon.addObject("UncoupledConstraintCorrection", compliance=[1e-5], defaultCompliance=1e-5)
+    colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=True)
+    colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
     col_colon = colon.addChild("Collision", activated=False)
-    col_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     col_colon.addObject("MeshTopology", src="@loader")
     col_colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
-    col_colon.addObject("TriangleCollisionModel", group=1)
-    col_colon.addObject("LineCollisionModel", group=1)
-    col_colon.addObject("PointCollisionModel", group=1)
+    col_colon.addObject("TriangleCollisionModel", group=0)
+    col_colon.addObject("LineCollisionModel", group=0)
+    col_colon.addObject("PointCollisionModel", group=0)
     col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
-    visu_colon.addObject("MeshObjLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     visu_colon.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 

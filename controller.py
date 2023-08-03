@@ -6,4 +6,5 @@ class MoveSphere(SC.Controller):
         self.sphere = kwargs["sphere"]
     
     def onAnimateBeginEvent(self, event):
-        print(self.sphere["position"].value)
+        # print(self.sphere["position"].value)
+        pass

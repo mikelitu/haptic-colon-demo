@@ -244,6 +244,8 @@ def createScene(root: SC.Node):
     root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Lagrangian.Correction') # Needed to use components [UncoupledConstraintCorrection]
     root.addObject('RequiredPlugin', name='Sofa.Component.Engine.Select') # Needed to use components [BoxROI]
     root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Projective') # Needed to use components [FixedConstraint] 
+    root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Grid') # Needed to use components [SparseGridTopology] 
+    root.addObject('RequiredPlugin', name='Sofa.Component.Mapping.NonLinear') # Needed to use components [RigidMapping]
     root.addObject("RequiredPlugin", name="SofaPython3")
     root.addObject("RequiredPlugin", name="BeamAdapter")
 
@@ -256,7 +258,7 @@ def createScene(root: SC.Node):
     root.addObject("LCPConstraintSolver", tolerance=1e-3, maxIt=1e3)
     root.addObject("FreeMotionAnimationLoop")
 
-    root.addObject("VisualStyle", displayFlags="showCollisionModels showVisualModels hideForceFields")
+    root.addObject("VisualStyle", displayFlags="hideCollisionModels showVisualModels hideForceFields showInteractionForceFields")
 
     # place light and a camera
     root.addObject("LightManager")
@@ -272,33 +274,46 @@ def createScene(root: SC.Node):
     # root.addObject(SpotlightController(node=root))
 
     sphere = root.addChild("Sphere")
-    sphere.addObject("MechanicalObject", name="DOF", template="Vec3d", position=[9.6, 0.5, 0.0])
-    sphere.addObject("SphereCollisionModel", group=1, radius=0.15)
+    sphere.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
+    sphere.addObject("CGLinearSolver", iterations=25, tolerance=1e-10, threshold=1e-10)
+    sphere.addObject("MechanicalObject", name="DOF", template="Rigid3d", position=[9.6, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0])
+    sphere.addObject("UniformMass", name="mass")
+    # sphere.addObject("UncoupledConstraintCorrection", compliance=1e-3)
+    sphere_col = sphere.addChild("Collision")
+    sphere_col.addObject("MechanicalObject", name="Col", template="Vec3d")
+    sphere_col.addObject("SphereCollisionModel", group=1, radius=0.2, contactStiffness=1e2)
+    sphere_col.addObject("RigidMapping")
+    sphere_visu = sphere.addChild("Visu")
+    sphere_visu.addObject("MeshOBJLoader", name="loader", filename="mesh/sphere.obj")
+    sphere_visu.addObject("OglModel", name="Visual", src="@loader", scale=0.2, color="green")
+    sphere_visu.addObject("RigidMapping")
+
 
     root.addObject(MoveSphere(sphere=sphere["DOF"]))
 
     colon = root.addChild("Colon")
     colon.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
     colon.addObject("CGLinearSolver", iterations=50, tolerance=1e-10, threshold=1e-15)
-    colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    colon.addObject("MeshTopology", src="@loader")
-    colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
-    colon.addObject("TriangleFEMForceField", name="FEM", youngModulus=1e8, poissonRatio=0.4, method="large")
+    # colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
+    colon.addObject("SparseGridTopology", name="sp_grid", n=[5, 5, 12], fileTopology="mesh/partial-colon-decimate_05.obj")
+    # colon.addObject("MeshTopology", src="@loader")
+    colon.addObject("MechanicalObject", topology="@sp_grid", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=1e4, poissonRatio=0.4, method="large")
     colon.addObject("UniformMass", name="mass")
     colon.addObject("UncoupledConstraintCorrection", compliance=[1e-5], defaultCompliance=1e-5)
     colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=True)
     colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
-    col_colon = colon.addChild("Collision", activated=False)
+    col_colon = colon.addChild("Collision", activated=True)
     col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     col_colon.addObject("MeshTopology", src="@loader")
-    col_colon.addObject("MechanicalObject", src="@loader", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    col_colon.addObject("MechanicalObject", src="@loader", template="Vec3d")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     col_colon.addObject("TriangleCollisionModel", group=0)
     col_colon.addObject("LineCollisionModel", group=0)
     col_colon.addObject("PointCollisionModel", group=0)
     col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
     visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    visu_colon.addObject("OglModel", src="@loader", color="red", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    visu_colon.addObject("OglModel", src="@loader", color="red")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
 

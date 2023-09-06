@@ -61,7 +61,9 @@ around_angle = 0
 translation = [0.0, 0.0, 0.0]
 init_view = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
 
-
+def centre_of_mass(mo):
+    positions = mo["position"].value
+    print(positions.mean(axis=0))
 
 def init_display(node: SC.Node, im_loader: ImageLoader):
     global init_view
@@ -139,7 +141,6 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     # glScissor(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
     # glClearColor(1, 1, 1, 1)
     glViewport(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
-    glDepthMask(False)
     # glColor(1, 1, 1, 1)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -204,7 +205,6 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     
     SG.draw(rootNode)
     glPopMatrix()
-    glDepthMask(True)
 
     pygame.display.flip()
 
@@ -253,7 +253,7 @@ def createScene(root: SC.Node):
     root.addObject("CollisionResponse")
     root.addObject("BruteForceBroadPhase")
     root.addObject("BVHNarrowPhase")
-    root.addObject("LocalMinDistance", alarmDistance=0.3, contactDistance=0.1)
+    root.addObject("LocalMinDistance", name="Proximity", alarmDistance=0.3, contactDistance=0.1)
 
     root.addObject("LCPConstraintSolver", tolerance=1e-3, maxIt=1e3)
     root.addObject("FreeMotionAnimationLoop")
@@ -262,7 +262,7 @@ def createScene(root: SC.Node):
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[0,0,-1])
+    root.addObject("DirectionalLight", name="spotlight", direction=[0,1,0])
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
@@ -271,25 +271,50 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-    # root.addObject(SpotlightController(node=root))
 
-    sphere = root.addChild("Sphere")
-    sphere.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
-    sphere.addObject("CGLinearSolver", iterations=25, tolerance=1e-10, threshold=1e-10)
-    sphere.addObject("MechanicalObject", name="DOF", template="Rigid3d", position=[9.6, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0])
-    sphere.addObject("UniformMass", name="mass")
-    # sphere.addObject("UncoupledConstraintCorrection", compliance=1e-3)
-    sphere_col = sphere.addChild("Collision")
-    sphere_col.addObject("MechanicalObject", name="Col", template="Vec3d")
-    sphere_col.addObject("SphereCollisionModel", group=1, radius=0.2, contactStiffness=1e2)
-    sphere_col.addObject("RigidMapping")
-    sphere_visu = sphere.addChild("Visu")
-    sphere_visu.addObject("MeshOBJLoader", name="loader", filename="mesh/sphere.obj")
-    sphere_visu.addObject("OglModel", name="Visual", src="@loader", scale=0.2, color="green")
-    sphere_visu.addObject("RigidMapping")
+    topoLines_cath = root.addChild('topoLines_cath')
+    topoLines_cath.addObject('WireRestShape', template="Rigid3d", printLog=False, name="catheterRestShape", length="20", straightLength="20", spireDiameter="0", spireHeight="0.0", densityOfBeams="40", numEdges="20", numEdgesCollis="20", youngModulus="2.5e5", youngModulusExtremity="2.5e5", radius="@../Proximity.contactDistance")
+    topoLines_cath.addObject('EdgeSetTopologyContainer', name="meshLinesCath")
+    topoLines_cath.addObject('EdgeSetTopologyModifier', name="Modifier")
+    topoLines_cath.addObject('EdgeSetGeometryAlgorithms', name="GeomAlgo", template="Rigid3d")
+    topoLines_cath.addObject('MechanicalObject', template="Rigid3d", name="dofTopo1")
+
+    RefStartingPos = root.addChild('RefStartingPos')
+    RefStartingPos.addObject('MechanicalObject', name="ReferencePos", template="Rigid3d", position=[9.7, -1.0, 0.0, 0.0, 0.0, 0.707, 0.707])
+
+    InstrumentCombined = root.addChild('InstrumentCombined')
+    InstrumentCombined.addObject('EulerImplicitSolver', rayleighStiffness="0.01", rayleighMass="0.03", printLog=False )
+    InstrumentCombined.addObject('BTDLinearSolver')
+    InstrumentCombined.addObject('RegularGridTopology', name="meshLinesCombined", nx="100", ny="1", nz="1")
+
+    InstrumentCombined.addObject('MechanicalObject', template="Rigid3d", name="DOFs", rz=90)
+    InstrumentCombined.addObject('InterventionalRadiologyController', template="Rigid3d", name="m_ircontroller", printLog=False, xtip="0.1",speed =0.1,   step="0.", rotationInstrument="0", controlledInstrument="0", startingPos="@../RefStartingPos/ReferencePos.position", instruments="InterpolCatheter")
+    InstrumentCombined.addObject('WireBeamInterpolation', name="InterpolCatheter", WireRestShape="@../topoLines_cath/catheterRestShape", radius="3.0", printLog=False)
+    InstrumentCombined.addObject('AdaptiveBeamForceFieldAndMass', name="CatheterForceField", massDensity="0.000005", interpolation="@InterpolCatheter", printLog=False)
+    InstrumentCombined.addObject('LinearSolverConstraintCorrection', printLog=False, wire_optimization="true")
+    InstrumentCombined.addObject("FixedConstraint", indices="0")
+    InstrumentCombined.addObject('RestShapeSpringsForceField', name="MeasurementFF", points="@m_ircontroller.indexFirstNode",  stiffness="1e10", recompute_indices="1", angularStiffness="1e10", external_rest_shape="@../RefStartingPos/ReferencePos", external_points="0", drawSpring="1", springColor="1 0 0 1")
+
+    CollisInstrumentCombined = InstrumentCombined.addChild('CollisInstrumentCombined')
+    CollisInstrumentCombined.addObject('EdgeSetTopologyContainer', name="collisEdgeSet")
+    CollisInstrumentCombined.addObject('EdgeSetTopologyModifier', name="colliseEdgeModifier")
+    CollisInstrumentCombined.addObject('MechanicalObject', name="CollisionDOFs")
+    CollisInstrumentCombined.addObject('MultiAdaptiveBeamMapping', name="multimapp", ircontroller="../m_ircontroller", useCurvAbs="1", printLog="false")
+    CollisInstrumentCombined.addObject('LineCollisionModel' )
+    CollisInstrumentCombined.addObject('PointCollisionModel')
+
+    visuInstrumentCombined = InstrumentCombined.addChild('visuInstrumentCombined')
+    visuInstrumentCombined.addObject('MechanicalObject', name="Quads")
+    visuInstrumentCombined.addObject('QuadSetTopologyContainer', name="ContainerCath")
+    visuInstrumentCombined.addObject('QuadSetTopologyModifier', name="Modifier" )
+    visuInstrumentCombined.addObject('QuadSetGeometryAlgorithms', name="GeomAlgo", template="Vec3d")
+    visuInstrumentCombined.addObject('Edge2QuadTopologicalMapping', nbPointsOnEachCircle="10", radius="@../../Proximity.contactDistance", input="@../../topoLines_cath/meshLinesCath", output="@ContainerCath", flipNormals="true",printLog=False)
+    visuInstrumentCombined.addObject('AdaptiveBeamMapping', name="VisuMapCath", useCurvAbs="1", printLog=False, isMechanical="false",  interpolation="@../InterpolCatheter")
 
 
-    root.addObject(MoveSphere(sphere=sphere["DOF"]))
+    realVisuInstrumentCombined = visuInstrumentCombined.addChild('realVisuInstrumentCombined')
+    realVisuInstrumentCombined.addObject('OglModel',name="VisualCathOGL", src="@../ContainerCath", color='white')
+    realVisuInstrumentCombined.addObject('IdentityMapping', input="@../Quads", output="@VisualCathOGL")
 
     colon = root.addChild("Colon")
     colon.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
@@ -297,7 +322,7 @@ def createScene(root: SC.Node):
     # colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     colon.addObject("SparseGridTopology", name="sp_grid", n=[5, 5, 12], fileTopology="mesh/partial-colon-decimate_05.obj")
     # colon.addObject("MeshTopology", src="@loader")
-    colon.addObject("MechanicalObject", topology="@sp_grid", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    colon.addObject("MechanicalObject", name="colon_dof", topology="@sp_grid", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=1e4, poissonRatio=0.4, method="large")
     colon.addObject("UniformMass", name="mass")
     colon.addObject("UncoupledConstraintCorrection", compliance=[1e-5], defaultCompliance=1e-5)
@@ -313,7 +338,7 @@ def createScene(root: SC.Node):
     col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
     visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    visu_colon.addObject("OglModel", src="@loader", color="red")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.0 0.0 0.95")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
 

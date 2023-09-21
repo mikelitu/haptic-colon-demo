@@ -15,7 +15,7 @@ from typing import List
 from dataclasses import dataclass, field
 import numpy as np
 from utils import ImageLoader, create_sofa_window
-from controller import MoveSphere
+from controller import ControlCatheter
 
 @dataclass
 class DeviceState:
@@ -127,7 +127,7 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     glPushMatrix()
-    glTranslatef(8., 0., 0.)
+    glTranslatef(8.3, -0.2, 0.25)
     glRotatef(90., 0., 0., 1.)
 
     glMultMatrixf(view_matrix)
@@ -253,16 +253,16 @@ def createScene(root: SC.Node):
     root.addObject("CollisionResponse")
     root.addObject("BruteForceBroadPhase")
     root.addObject("BVHNarrowPhase")
-    root.addObject("LocalMinDistance", name="Proximity", alarmDistance=0.3, contactDistance=0.1)
+    root.addObject("LocalMinDistance", name="Proximity", alarmDistance=0.3, contactDistance=0.05)
 
     root.addObject("LCPConstraintSolver", tolerance=1e-3, maxIt=1e3)
     root.addObject("FreeMotionAnimationLoop")
 
-    root.addObject("VisualStyle", displayFlags="hideCollisionModels showVisualModels hideForceFields showInteractionForceFields")
+    root.addObject("VisualStyle", displayFlags="hideCollisionModels showVisualModels hideForceFields hideInteractionForceFields")
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[0,1,0])
+    root.addObject("DirectionalLight", name="spotlight", direction=[0,-1,0])
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
@@ -326,7 +326,7 @@ def createScene(root: SC.Node):
     colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=1e4, poissonRatio=0.4, method="large")
     colon.addObject("UniformMass", name="mass")
     colon.addObject("UncoupledConstraintCorrection", compliance=[1e-5], defaultCompliance=1e-5)
-    colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=True)
+    colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=False)
     colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
     col_colon = colon.addChild("Collision", activated=True)
     col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
@@ -338,9 +338,10 @@ def createScene(root: SC.Node):
     col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
     visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.0 0.0 0.95")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.0 0.0 1.0")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
+    root.addObject(ControlCatheter(node=root))
 
 
 def main():

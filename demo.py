@@ -49,16 +49,16 @@ logo_dir = "logos/kings-logo.png"
 big_display_size = (1920, 1080)
 big_display_center = (big_display_size[0] // 2, big_display_size[1] // 2)
 big_position = [0, 0]
-small_display_size = (300, 300)
-small_display_center = (1620 + small_display_size[0] // 2, 780 + small_display_size[1] // 2)
-small_position = [1620, 780]
+small_display_size = (450, 500)
+small_position = [1920 - small_display_size[0], 1080 - small_display_size[1]]
+small_display_center = (small_position[0] + small_display_size[0] // 2, small_display_size[1] // 2)
 deb_flags = pygame.DOUBLEBUF | pygame.OPENGL
 flags = pygame.DOUBLEBUF | pygame.OPENGL | pygame.FULLSCREEN
 up_down_angle = 0
 in_out_zoom = 1
 left_right_angle = 0
 around_angle = 0
-translation = [0.0, 0.0, 0.0]
+translation = [-1.0, 0.0, 0.0]
 init_view = [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
 
 def centre_of_mass(mo):
@@ -76,7 +76,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     pygame.display.init()
     pygame.display.set_mode(big_display_size, deb_flags)
     pygame.display.set_caption("Colon simulation")
-    pygame.mouse.set_visible(False)
+    pygame.mouse.set_visible(True)
     glClearColor(1, 1, 1, 1)
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -127,7 +127,9 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     glPushMatrix()
-    glTranslatef(8.3, -0.2, 0.25)
+    # The camera moves as follows:
+    #   1. 
+    glTranslatef(8.7, -0.2, 0.25)
     glRotatef(90., 0., 0., 1.)
 
     glMultMatrixf(view_matrix)
@@ -246,8 +248,11 @@ def createScene(root: SC.Node):
     root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Projective') # Needed to use components [FixedConstraint] 
     root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Grid') # Needed to use components [SparseGridTopology] 
     root.addObject('RequiredPlugin', name='Sofa.Component.Mapping.NonLinear') # Needed to use components [RigidMapping]
+    root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Dynamic') # Needed to use components [EdgeSetGeometryAlgorithms,EdgeSetTopologyContainer,EdgeSetTopologyModifier,QuadSetGeometryAlgorithms,QuadSetTopologyContainer,QuadSetTopologyModifier]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Mapping') # Needed to use components [Edge2QuadTopologicalMapping]  
     root.addObject("RequiredPlugin", name="SofaPython3")
     root.addObject("RequiredPlugin", name="BeamAdapter")
+    root.addObject("RequiredPlugin", name="Geomagic")
 
     root.addObject("CollisionPipeline")
     root.addObject("CollisionResponse")
@@ -262,7 +267,7 @@ def createScene(root: SC.Node):
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[0,-1,0])
+    root.addObject("DirectionalLight", name="spotlight", direction=[0,0,-1])
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
@@ -271,7 +276,8 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-
+    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.075, drawDevice=0, drawDeviceFrame=1, positionBase=[9.7, 0.1, 0.0], orientationBase=[0., 0., -0.707, 0.707])
+    
     topoLines_cath = root.addChild('topoLines_cath')
     topoLines_cath.addObject('WireRestShape', template="Rigid3d", printLog=False, name="catheterRestShape", length="20", straightLength="20", spireDiameter="0", spireHeight="0.0", densityOfBeams="40", numEdges="20", numEdgesCollis="20", youngModulus="2.5e5", youngModulusExtremity="2.5e5", radius="@../Proximity.contactDistance")
     topoLines_cath.addObject('EdgeSetTopologyContainer', name="meshLinesCath")
@@ -316,6 +322,9 @@ def createScene(root: SC.Node):
     realVisuInstrumentCombined.addObject('OglModel',name="VisualCathOGL", src="@../ContainerCath", color='white')
     realVisuInstrumentCombined.addObject('IdentityMapping', input="@../Quads", output="@VisualCathOGL")
 
+    omni = root.addChild("Omni")
+    omni.addObject("MechanicalObject", template="Rigid3d", name="DOFs", position="@GeomagicDevice.positionDevice")
+
     colon = root.addChild("Colon")
     colon.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
     colon.addObject("CGLinearSolver", iterations=50, tolerance=1e-10, threshold=1e-15)
@@ -340,6 +349,7 @@ def createScene(root: SC.Node):
     visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.0 0.0 1.0")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
+
 
     root.addObject(ControlCatheter(node=root))
 

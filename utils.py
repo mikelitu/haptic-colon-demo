@@ -3,6 +3,8 @@ from OpenGL.GLU import *
 import pygame
 import Sofa.SofaGL as SG
 import Sofa.Simulation as SS
+from scipy.spatial.transform import Rotation
+import math
 
 
 class ImageLoader:
@@ -122,5 +124,7 @@ def create_sofa_window(position, size, node):
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
 
-def render_sofa_window(position, size, node, camera, ):
-    pass
+def get_device_orientation():
+    Rx = Rotation.from_quat([0.707, 0.0, 0.0, 0.707]).as_matrix()
+    Ry = Rotation.from_quat([0.0, 1.0, 0.0, 0.0]).as_matrix()
+    return Rotation.from_matrix(Ry @ Rx).as_quat().tolist()

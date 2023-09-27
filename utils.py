@@ -93,7 +93,7 @@ class SofaPygameWindow(object):
         glLoadIdentity()
 
 
-def create_sofa_window(position, size, node):
+def create_sofa_window(position, size, node, light=False):
     glViewport(position[0], position[1], size[0], size[1])
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -114,6 +114,11 @@ def create_sofa_window(position, size, node):
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(45, (size[0] / size[1]), 0.1, 100.0)
+
+    if light:
+        glLight(GL_LIGHT0, GL_SPOT_DIRECTION,  (0, 0, -1)) # point light from the left, top, front
+        glLightfv(GL_LIGHT0, GL_AMBIENT, (1.0, 0, 0, 0.1))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, (0.0, 0.0, 0.0, 1))
     
     # Set the background to white
     # glClearColor(1, 1, 1, 1)

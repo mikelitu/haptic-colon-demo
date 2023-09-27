@@ -9,38 +9,8 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from typing import List
-# import pyOpenHaptics.hd as hd
-# from pyOpenHaptics.hd_callback import hd_callback
-# from pyOpenHaptics.hd_device import HapticDevice
-from dataclasses import dataclass, field
-import numpy as np
-from utils import ImageLoader, create_sofa_window
+from utils import ImageLoader, create_sofa_window, get_device_orientation
 from controller import ControlCatheter
-
-@dataclass
-class DeviceState:
-    button: bool = False
-    joints: list = field(default_factory=list)
-    gimbals: list = field(default_factory=list)
-    transform: list = field(default_factory=list)
-    translation: list = field(default_factory=list)
-
-# @hd_callback
-# def state_callback():
-#     global device_state
-#     transform = hd.get_transform()
-#     device_state.transform = [[transform[0][0], transform[1][0], transform[2][0], 0.],
-#                               [transform[0][1], transform[1][1], transform[2][1], 0.],
-#                               [transform[0][2], transform[1][2], transform[2][2], 0.],
-#                               [transform[0][3], transform[1][3], transform[2][3], transform[3][3]]]
-    
-#     device_state.translation = [transform[3][0], transform[3][1], transform[3][2]]
-#     joints = hd.get_joints()
-#     gimbals = hd.get_gimbals()
-#     device_state.joints = [joints[0], joints[1], joints[2]]
-#     device_state.gimbals = [gimbals[0], gimbals[1], gimbals[2]]
-#     button = hd.get_buttons()
-#     device_state.button = True if button==1 else False
 
 # Directory to the different logos
 logo_dir = "logos/kings-logo.png"
@@ -82,7 +52,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     create_sofa_window(big_position, big_display_size, node)
-    create_sofa_window(small_position, small_display_size, node)
+    create_sofa_window(small_position, small_display_size, node, True)
 
     pygame.display.flip()
 
@@ -127,8 +97,8 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
 
     glPushMatrix()
-    # The camera moves as follows:
-    #   1. 
+    # The detailed camera (big viewport) moves as follows:
+    #   1. Forward-backward movement
     glTranslatef(8.7, -0.2, 0.25)
     glRotatef(90., 0., 0., 1.)
 
@@ -155,9 +125,8 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    glEnable(GL_LIGHTING)
-    glEnable(GL_DEPTH_TEST)
     
+    glEnable(GL_DEPTH_TEST)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
     gluPerspective(45, (small_display_size[0] / small_display_size[1]), 0.1, 100.0)
@@ -189,10 +158,6 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     # # Zoom the object with the mouse wheel
     in_out_zoom += zoom_mouse * 0.5
     glTranslatef(in_out_zoom, translation[2], translation[0])
-
-    # Move the object with the haptic device
-    # if device_state.button:
-    #     translation = device_state.translation
 
     # Rotate the object from left to right
     left_right_angle += mouse_move[0]*0.05
@@ -248,17 +213,18 @@ def createScene(root: SC.Node):
     root.addObject('RequiredPlugin', name='Sofa.Component.Constraint.Projective') # Needed to use components [FixedConstraint] 
     root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Grid') # Needed to use components [SparseGridTopology] 
     root.addObject('RequiredPlugin', name='Sofa.Component.Mapping.NonLinear') # Needed to use components [RigidMapping]
-    root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Dynamic') # Needed to use components [EdgeSetGeometryAlgorithms,EdgeSetTopologyContainer,EdgeSetTopologyModifier,QuadSetGeometryAlgorithms,QuadSetTopologyContainer,QuadSetTopologyModifier]  
+    root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Container.Dynamic') # Needed to use components [EdgeSetGeometryAlgorithms,EdgeSetTopologyContainer,EdgeSetTopologyModifier,QuadSetGeometryAlgorithms,QuadSetTopologyContainer,QuadSetTopologyModifier] 
     root.addObject('RequiredPlugin', name='Sofa.Component.Topology.Mapping') # Needed to use components [Edge2QuadTopologicalMapping]  
+    root.addObject("RequiredPlugin", name="Sofa.Component.MechanicalLoad")
     root.addObject("RequiredPlugin", name="SofaPython3")
     root.addObject("RequiredPlugin", name="BeamAdapter")
     root.addObject("RequiredPlugin", name="Geomagic")
 
-    root.addObject("CollisionPipeline")
-    root.addObject("CollisionResponse")
+    root.addObject("CollisionPipeline", name="pipeline", depth=6, verbose=0)
+    root.addObject("CollisionResponse", name="response", response="FrictionContactConstraint")
     root.addObject("BruteForceBroadPhase")
     root.addObject("BVHNarrowPhase")
-    root.addObject("LocalMinDistance", name="Proximity", alarmDistance=0.3, contactDistance=0.05)
+    root.addObject("LocalMinDistance", name="Proximity", alarmDistance=0.05, contactDistance=0.025)
 
     root.addObject("LCPConstraintSolver", tolerance=1e-3, maxIt=1e3)
     root.addObject("FreeMotionAnimationLoop")
@@ -267,7 +233,8 @@ def createScene(root: SC.Node):
 
     # place light and a camera
     root.addObject("LightManager")
-    root.addObject("DirectionalLight", name="spotlight", direction=[0,0,-1])
+    root.addObject("DirectionalLight", name="spotlight", color=[1, 1, 1, 0.1], direction=[0,-1,0])
+    # root.addObject("DirectionalLight", name="light", color=[1, 1., 1., 0.01], direction=[0, 0, -1])
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
@@ -276,10 +243,29 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.075, drawDevice=0, drawDeviceFrame=1, positionBase=[9.7, 0.1, 0.0], orientationBase=[0., 0., -0.707, 0.707])
+    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 0.9, 0.0], orientationBase=get_device_orientation(),
+                   maxInputForceFeedback = 0.5)
+    
+    omni = root.addChild("Omni")
+    omni.addObject("MechanicalObject", template="Rigid3d", name="DOFs", position="@GeomagicDevice.positionDevice")
+
+    omni_instrument = root.addChild("Instrument")
+    omni_instrument.addObject("EulerImplicitSolver", rayleighMass=0.01, rayleighStiffness=0.1)
+    omni_instrument.addObject("SparseLDLSolver", template="CompressedRowSparseMatrixMat3x3d")
+    omni_instrument.addObject("MechanicalObject", name="instrumentState", template="Rigid3d", position="@../GeomagicDevice.positionBase")
+    omni_instrument.addObject("UniformMass", name="mass", totalMass=0.5)
+    omni_instrument.addObject("RestShapeSpringsForceField", stiffness=1e10, angularStiffness=1e10, external_rest_shape="@../Omni/DOFs", points=0, external_points=0)
+    omni_instrument.addObject("LCPForceFeedback", name="LCPFF", activate=True, forceCoef=7.5e-8, printLog=False)
+    # omni_instrument.addObject("SphereCollisionModel", radius=0.05, group=1, contactStiffness=1e2)
+    omni_instrument.addObject("LinearSolverConstraintCorrection")
+    
+    omni_collision = omni_instrument.addChild("Collision", activated=False)
+    omni_collision.addObject("MechanicalObject", template="Vec3d", position="@../../GeomagicDevice.positionBase")
+    omni_collision.addObject("SphereCollisionModel", radius=0.0425)
+    omni_collision.addObject("IdentityMapping")
     
     topoLines_cath = root.addChild('topoLines_cath')
-    topoLines_cath.addObject('WireRestShape', template="Rigid3d", printLog=False, name="catheterRestShape", length="20", straightLength="20", spireDiameter="0", spireHeight="0.0", densityOfBeams="40", numEdges="20", numEdgesCollis="20", youngModulus="2.5e5", youngModulusExtremity="2.5e5", radius="@../Proximity.contactDistance")
+    topoLines_cath.addObject('WireRestShape', template="Rigid3d", printLog=False, name="catheterRestShape", length="20", straightLength="20", spireDiameter="0", spireHeight="0.0", densityOfBeams="40", numEdges="20", numEdgesCollis="20", youngModulus="2.5e5", youngModulusExtremity="2.5e5", radius="@../Proximity.alarmDistance")
     topoLines_cath.addObject('EdgeSetTopologyContainer', name="meshLinesCath")
     topoLines_cath.addObject('EdgeSetTopologyModifier', name="Modifier")
     topoLines_cath.addObject('EdgeSetGeometryAlgorithms', name="GeomAlgo", template="Rigid3d")
@@ -289,19 +275,19 @@ def createScene(root: SC.Node):
     RefStartingPos.addObject('MechanicalObject', name="ReferencePos", template="Rigid3d", position=[9.7, -1.0, 0.0, 0.0, 0.0, 0.707, 0.707])
 
     InstrumentCombined = root.addChild('InstrumentCombined')
-    InstrumentCombined.addObject('EulerImplicitSolver', rayleighStiffness="0.01", rayleighMass="0.03", printLog=False )
+    InstrumentCombined.addObject('EulerImplicitSolver', rayleighStiffness="0.1", rayleighMass="0.1", printLog=False )
     InstrumentCombined.addObject('BTDLinearSolver')
     InstrumentCombined.addObject('RegularGridTopology', name="meshLinesCombined", nx="100", ny="1", nz="1")
-
     InstrumentCombined.addObject('MechanicalObject', template="Rigid3d", name="DOFs", rz=90)
-    InstrumentCombined.addObject('InterventionalRadiologyController', template="Rigid3d", name="m_ircontroller", printLog=False, xtip="0.1",speed =0.1,   step="0.", rotationInstrument="0", controlledInstrument="0", startingPos="@../RefStartingPos/ReferencePos.position", instruments="InterpolCatheter")
-    InstrumentCombined.addObject('WireBeamInterpolation', name="InterpolCatheter", WireRestShape="@../topoLines_cath/catheterRestShape", radius="3.0", printLog=False)
-    InstrumentCombined.addObject('AdaptiveBeamForceFieldAndMass', name="CatheterForceField", massDensity="0.000005", interpolation="@InterpolCatheter", printLog=False)
+    InstrumentCombined.addObject('InterventionalRadiologyController', template="Rigid3d", name="m_ircontroller", printLog=False, xtip="0.1",speed =0.5,   step="0.", rotationInstrument="0", controlledInstrument="0", startingPos="@../RefStartingPos/ReferencePos.position", instruments="InterpolCatheter")
+    InstrumentCombined.addObject('WireBeamInterpolation', name="InterpolCatheter", WireRestShape="@../topoLines_cath/catheterRestShape", radius="0.05", printLog=False)
+    InstrumentCombined.addObject('AdaptiveBeamForceFieldAndMass', name="CatheterForceField", massDensity="10", computeMass=1, interpolation="@InterpolCatheter", printLog=False)
     InstrumentCombined.addObject('LinearSolverConstraintCorrection', printLog=False, wire_optimization="true")
     InstrumentCombined.addObject("FixedConstraint", indices="0")
     InstrumentCombined.addObject('RestShapeSpringsForceField', name="MeasurementFF", points="@m_ircontroller.indexFirstNode",  stiffness="1e10", recompute_indices="1", angularStiffness="1e10", external_rest_shape="@../RefStartingPos/ReferencePos", external_points="0", drawSpring="1", springColor="1 0 0 1")
+    InstrumentCombined.addObject("ConstantForceField", name="force", indices=[99], forces=[0., 0., 0., 0., 0., 0.])
 
-    CollisInstrumentCombined = InstrumentCombined.addChild('CollisInstrumentCombined')
+    CollisInstrumentCombined = InstrumentCombined.addChild('CollisInstrumentCombined', activated=False)
     CollisInstrumentCombined.addObject('EdgeSetTopologyContainer', name="collisEdgeSet")
     CollisInstrumentCombined.addObject('EdgeSetTopologyModifier', name="colliseEdgeModifier")
     CollisInstrumentCombined.addObject('MechanicalObject', name="CollisionDOFs")
@@ -314,7 +300,7 @@ def createScene(root: SC.Node):
     visuInstrumentCombined.addObject('QuadSetTopologyContainer', name="ContainerCath")
     visuInstrumentCombined.addObject('QuadSetTopologyModifier', name="Modifier" )
     visuInstrumentCombined.addObject('QuadSetGeometryAlgorithms', name="GeomAlgo", template="Vec3d")
-    visuInstrumentCombined.addObject('Edge2QuadTopologicalMapping', nbPointsOnEachCircle="10", radius="@../../Proximity.contactDistance", input="@../../topoLines_cath/meshLinesCath", output="@ContainerCath", flipNormals="true",printLog=False)
+    visuInstrumentCombined.addObject('Edge2QuadTopologicalMapping', nbPointsOnEachCircle="10", radius="@../../Proximity.alarmDistance", input="@../../topoLines_cath/meshLinesCath", output="@ContainerCath", flipNormals="true",printLog=False)
     visuInstrumentCombined.addObject('AdaptiveBeamMapping', name="VisuMapCath", useCurvAbs="1", printLog=False, isMechanical="false",  interpolation="@../InterpolCatheter")
 
 
@@ -322,21 +308,21 @@ def createScene(root: SC.Node):
     realVisuInstrumentCombined.addObject('OglModel',name="VisualCathOGL", src="@../ContainerCath", color='white')
     realVisuInstrumentCombined.addObject('IdentityMapping', input="@../Quads", output="@VisualCathOGL")
 
-    omni = root.addChild("Omni")
-    omni.addObject("MechanicalObject", template="Rigid3d", name="DOFs", position="@GeomagicDevice.positionDevice")
+    
 
     colon = root.addChild("Colon")
-    colon.addObject("EulerImplicitSolver", rayleighMass=0.25, rayleighStiffness=0.25)
-    colon.addObject("CGLinearSolver", iterations=50, tolerance=1e-10, threshold=1e-15)
+    colon.addObject("EulerImplicitSolver", rayleighMass=0.1, rayleighStiffness=0.1)
+    colon.addObject("CGLinearSolver", iterations=25, tolerance=1e-10, threshold=1e-10)
     # colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    colon.addObject("SparseGridTopology", name="sp_grid", n=[5, 5, 12], fileTopology="mesh/partial-colon-decimate_05.obj")
+    colon.addObject("SparseGridTopology", name="sp_grid", n=[10, 10, 18], fileTopology="mesh/partial-colon-decimate_05.obj")
     # colon.addObject("MeshTopology", src="@loader")
     colon.addObject("MechanicalObject", name="colon_dof", topology="@sp_grid", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
-    colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=1e4, poissonRatio=0.4, method="large")
+    colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=7e9, poissonRatio=0.45, method="large")
     colon.addObject("UniformMass", name="mass")
-    colon.addObject("UncoupledConstraintCorrection", compliance=[1e-5], defaultCompliance=1e-5)
+    colon.addObject("UncoupledConstraintCorrection", compliance=[5e-7], defaultCompliance=5e-7)
     colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=False)
     colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
+    # colon.addObject("RestShapeSpringsForceField", points="@box.indices", stiffness=1e12, angularStiffness=1e12)
     col_colon = colon.addChild("Collision", activated=True)
     col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     col_colon.addObject("MeshTopology", src="@loader")
@@ -347,7 +333,7 @@ def createScene(root: SC.Node):
     col_colon.addObject("BarycentricMapping")
     visu_colon = colon.addChild("Visu")
     visu_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
-    visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.0 0.0 1.0")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.1 0.1 1.0")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
 

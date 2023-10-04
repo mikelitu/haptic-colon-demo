@@ -340,7 +340,7 @@ def createScene(root: SC.Node):
     # objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
     # objective.addObject("OglModel", name="Visual", translation=[-65.426132,  31.477375, -11.028152],  src="@sphere", scale=5.0, color="0.1 1.0 0.1 1.0")
 
-    root.addObject(ControlCatheter(node=root))
+    return root.addObject(ControlCatheter(node=root))
 
 
 def main():
@@ -394,10 +394,12 @@ def main():
                 if event.type == pygame.MOUSEMOTION:
                     mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
                     pygame.mouse.set_pos(small_display_center)
-                
+
         time.sleep(root.getDt())
 
     pygame.quit()
+
+    print()
 
 
 if __name__ == "__main__":

@@ -40,20 +40,24 @@ class ControlCatheter(SC.Controller):
             if not self.attached:
                 self.create_omni_attachment()
                 self.attached = True
-                self.draw_objective(self.position)
+                self.draw_objective(self.position, "yellow")
             else:
                 self.generate_force(self.beam["position"].value[-1][:3], self.omni["position"].value[0][:3])
-                
-                if np.linalg.norm(pos - self.position) < 0.01 and not self.start_exp:
+                if np.linalg.norm(self.omni["position"].value[0][:3] - self.position) < 0.16 and not self.start_exp:
+                    print("Experiment starting!")
                     self.exp_time = 0
                     self.start_exp = True
                     self.exp_forces = []
+                    self.draw_objective(self.position, "green")
         
         if self.start_exp:
-            if self.exp_time < 10.0:
+            if self.exp_time < 5.0:
+                print("The experiment has been running for: ", self.exp_time)
                 self.exp_time += self.dt
                 contact_force = self.force_sensor.step(4102)
                 self.exp_forces.append(contact_force)
+            else:
+                print(self.exp_forces)
 
         pass
     
@@ -73,10 +77,10 @@ class ControlCatheter(SC.Controller):
         force = self.mass * (diff_pos/(self.dt)**2) 
         return force / np.linalg.norm(force)
     
-    def draw_objective(self, position):
+    def draw_objective(self, position, color):
         objective = self.node.addChild("Objective")
         objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
-        objective.addObject("OglModel", name="Visual", translation=self.position,  src="@sphere", scale=0.1, color="0.1 1.0 0.1 1.0")
+        objective.addObject("OglModel", name="Visual", translation=self.position,  src="@sphere", scale=0.05, color=color)
         objective.init()
         SS.initVisual(objective)
 

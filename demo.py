@@ -243,7 +243,7 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 0.9, 0.0], orientationBase=get_device_orientation(),
+    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 1.0, 0.0], orientationBase=get_device_orientation(),
                    maxInputForceFeedback = 0.5)
     
     omni = root.addChild("Omni")
@@ -261,7 +261,7 @@ def createScene(root: SC.Node):
     
     omni_collision = omni_instrument.addChild("Collision", activated=False)
     omni_collision.addObject("MechanicalObject", template="Vec3d", position="@../../GeomagicDevice.positionBase")
-    omni_collision.addObject("SphereCollisionModel", radius=0.0425)
+    omni_collision.addObject("SphereCollisionModel", radius=0.0425, group=1)
     omni_collision.addObject("IdentityMapping")
     
     topoLines_cath = root.addChild('topoLines_cath')
@@ -279,7 +279,7 @@ def createScene(root: SC.Node):
     InstrumentCombined.addObject('BTDLinearSolver')
     InstrumentCombined.addObject('RegularGridTopology', name="meshLinesCombined", nx="100", ny="1", nz="1")
     InstrumentCombined.addObject('MechanicalObject', template="Rigid3d", name="DOFs", rz=90)
-    InstrumentCombined.addObject('InterventionalRadiologyController', template="Rigid3d", name="m_ircontroller", printLog=False, xtip="0.1",speed =0.5,   step="0.", rotationInstrument="0", controlledInstrument="0", startingPos="@../RefStartingPos/ReferencePos.position", instruments="InterpolCatheter")
+    InstrumentCombined.addObject('InterventionalRadiologyController', template="Rigid3d", name="m_ircontroller", printLog=False, xtip="0.1",speed =0.,   step="0.", rotationInstrument="0", controlledInstrument="0", startingPos="@../RefStartingPos/ReferencePos.position", instruments="InterpolCatheter")
     InstrumentCombined.addObject('WireBeamInterpolation', name="InterpolCatheter", WireRestShape="@../topoLines_cath/catheterRestShape", radius="0.05", printLog=False)
     InstrumentCombined.addObject('AdaptiveBeamForceFieldAndMass', name="CatheterForceField", massDensity="10", computeMass=1, interpolation="@InterpolCatheter", printLog=False)
     InstrumentCombined.addObject('LinearSolverConstraintCorrection', printLog=False, wire_optimization="true")
@@ -287,13 +287,13 @@ def createScene(root: SC.Node):
     InstrumentCombined.addObject('RestShapeSpringsForceField', name="MeasurementFF", points="@m_ircontroller.indexFirstNode",  stiffness="1e10", recompute_indices="1", angularStiffness="1e10", external_rest_shape="@../RefStartingPos/ReferencePos", external_points="0", drawSpring="1", springColor="1 0 0 1")
     InstrumentCombined.addObject("ConstantForceField", name="force", indices=[99], forces=[0., 0., 0., 0., 0., 0.])
 
-    CollisInstrumentCombined = InstrumentCombined.addChild('CollisInstrumentCombined', activated=False)
+    CollisInstrumentCombined = InstrumentCombined.addChild('CollisInstrumentCombined', activated=True)
     CollisInstrumentCombined.addObject('EdgeSetTopologyContainer', name="collisEdgeSet")
     CollisInstrumentCombined.addObject('EdgeSetTopologyModifier', name="colliseEdgeModifier")
     CollisInstrumentCombined.addObject('MechanicalObject', name="CollisionDOFs")
     CollisInstrumentCombined.addObject('MultiAdaptiveBeamMapping', name="multimapp", ircontroller="../m_ircontroller", useCurvAbs="1", printLog="false")
-    CollisInstrumentCombined.addObject('LineCollisionModel' )
-    CollisInstrumentCombined.addObject('PointCollisionModel')
+    CollisInstrumentCombined.addObject('LineCollisionModel', group=1)
+    CollisInstrumentCombined.addObject('PointCollisionModel', group=1)
 
     visuInstrumentCombined = InstrumentCombined.addChild('visuInstrumentCombined')
     visuInstrumentCombined.addObject('MechanicalObject', name="Quads")
@@ -326,7 +326,7 @@ def createScene(root: SC.Node):
     col_colon = colon.addChild("Collision", activated=True)
     col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     col_colon.addObject("MeshTopology", src="@loader")
-    col_colon.addObject("MechanicalObject", src="@loader", template="Vec3d")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
+    col_colon.addObject("MechanicalObject", name="colon_col", src="@loader", template="Vec3d")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     col_colon.addObject("TriangleCollisionModel", group=0)
     col_colon.addObject("LineCollisionModel", group=0)
     col_colon.addObject("PointCollisionModel", group=0)
@@ -336,6 +336,9 @@ def createScene(root: SC.Node):
     visu_colon.addObject("OglModel", name="Visual", src="@loader", color="1.0 0.1 0.1 1.0")# rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     visu_colon.addObject("BarycentricMapping")
 
+    # objective = root.addChild("Objective")
+    # objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
+    # objective.addObject("OglModel", name="Visual", translation=[-65.426132,  31.477375, -11.028152],  src="@sphere", scale=5.0, color="0.1 1.0 0.1 1.0")
 
     root.addObject(ControlCatheter(node=root))
 

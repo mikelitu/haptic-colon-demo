@@ -4,8 +4,7 @@ import pygame
 import Sofa.SofaGL as SG
 import Sofa.Simulation as SS
 from scipy.spatial.transform import Rotation
-import math
-
+import re
 
 class ImageLoader:
     
@@ -133,3 +132,62 @@ def get_device_orientation():
     Rx = Rotation.from_quat([0.707, 0.0, 0.0, 0.707]).as_matrix()
     Ry = Rotation.from_quat([0.0, 1.0, 0.0, 0.0]).as_matrix()
     return Rotation.from_matrix(Ry @ Rx).as_quat().tolist()
+
+
+def split_gen(x):
+    for f, s in re.findall(r'([\d.]+)|([^\d.]+)', x):
+        if f:
+            float(f)
+            yield f
+        else:
+            yield s
+
+def split_and_filter(x):
+    '''
+    >>> split("")
+    ()
+    >>> split("p")
+    ('p',)
+    >>> split("2")
+    ('2',)
+    >>> split("a2b3")
+    ('a', '2', 'b', '3')
+    >>> split("a2.1b3")
+    ('a', '2.1', 'b', '3')
+    >>> split("a.1b3")
+    ('a', '.1', 'b', '3')
+    >>> split(3)
+    Traceback (most recent call last):
+    ...
+    TypeError: expected string or buffer
+    >>> split("a0.10.2")
+    Traceback (most recent call last):
+    ...
+    ValueError: could not convert string to float: '0.10.2'
+    >>> split("ab.c")    
+    Traceback (most recent call last):
+    ...
+    ValueError: could not convert string to float: '.'
+    '''
+    line = list(split_gen(x))
+    idx_2_remove = []
+    line.pop()
+    for j, value in enumerate(line):
+        if value == ' -':
+            value = '-'
+            line[j+1] = value + line[j + 1]
+            idx_2_remove.append(j - len(idx_2_remove))
+        elif value == '  value : -':
+            minus = value[-1]
+            line[j] = value[:-1]
+            line[j+1] = minus + line[j + 1]
+        elif value == 'e-':
+            line[j + 1] = line[j - 1] + value + line[j + 1]
+            idx_2_remove.append(j - len(idx_2_remove)), idx_2_remove.append(j-len(idx_2_remove))
+            # self.collisionMatrix[i].pop(j), self.collisionMatrix[i].pop(j-1)
+        elif value == ' ':
+            idx_2_remove.append(j-len(idx_2_remove))
+    
+    [line.pop(idx) for idx in idx_2_remove]
+    line.pop(0), line.pop(0)
+    return line

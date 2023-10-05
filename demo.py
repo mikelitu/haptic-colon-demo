@@ -405,12 +405,11 @@ def main():
     if len(config.experiment_forces) != 0:
         fig = plt.figure(figsize=(15, 10))
         ax = fig.add_subplot(111)
-        ax.boxplot(config.experiment_forces, notch=True, marker_color="red")
+        ax.boxplot(config.experiment_forces, notch=False)
         plt.title(f"Your force based score is: {get_score(config.experiment_forces)}")
         ax.set_xticklabels(["Objective 1", "Objective 2", "Objective 3"])
         ax.set_ylabel("Force on the wall (N)")
         plt.show()
-
 
 if __name__ == "__main__":
     time.sleep(0.4)

@@ -53,7 +53,6 @@ class ControlCatheter(SC.Controller):
                 self.draw_objective(exp_position, [0.3, 0.3, 1.0, 1.0])
             else:
                 self.generate_force(self.beam["position"].value[-1][:3], self.omni["position"].value[0][:3])
-                print(np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position))
                 if np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position) < 0.12 and not self.start_exp:
                     self.exp_time = 0
                     self.start_exp = True
@@ -109,7 +108,7 @@ class ControlCatheter(SC.Controller):
 
         self.objective = self.node.addChild("Objective")
         self.objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
-        self.objective.addObject("OglModel", name="Visual", translation=position,  src="@sphere", scale=0.04, color=color)
+        self.objective.addObject("OglModel", name="Visual", translation=position,  src="@sphere", scale=0.06, color=color)
         self.objective.init()
         SS.initVisual(self.objective)
 

@@ -406,7 +406,7 @@ def main():
         fig = plt.figure(figsize=(15, 10))
         ax = fig.add_subplot(111)
         ax.boxplot(config.experiment_forces, notch=True, marker_color="red")
-        plt.title(f"Your score for the experiment is: {get_score(config.experiment_forces)}")
+        plt.title(f"Your force based score is: {get_score(config.experiment_forces)}")
         ax.set_xticklabels(["Objective 1", "Objective 2", "Objective 3"])
         ax.set_ylabel("Force on the wall (N)")
         plt.show()

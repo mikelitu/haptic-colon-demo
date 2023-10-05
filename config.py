@@ -1,2 +1,2 @@
-experiment_forces = {}
+experiment_forces = []
 done = False

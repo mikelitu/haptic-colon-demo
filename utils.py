@@ -191,3 +191,11 @@ def split_and_filter(x):
     [line.pop(idx) for idx in idx_2_remove]
     line.pop(0), line.pop(0)
     return line
+
+def get_score(forces):
+    score = 0
+    forces = sum(forces, [])
+    for f in forces:
+        if f >= 1.5 and f < 5.0:
+            score += 1
+    return (score / len(forces)) * 100

@@ -3,29 +3,39 @@ import Sofa.Simulation as SS
 import numpy as np
 import re
 from utils import split_and_filter
+import sys
+import config
+import random
+
+experiment_forces = {}
 
 class ControlCatheter(SC.Controller):
     def __init__(self, *args, **kwargs):
         SC.Controller.__init__(self, *args, **kwargs)
-        self.limit = 0.65
+        self.limit = 0.425
         self.node = kwargs["node"]
 
         self.beam_node = self.node["InstrumentCombined"]
         self.beam = self.node["InstrumentCombined"]["DOFs"]
         self.instrument_controller = self.node["InstrumentCombined"]["m_ircontroller"]
         self.device = self.node["GeomagicDevice"]
-        self.mass = 1.0
+        self.mass = 3.0
         self.dt = self.node.dt.value
         self.attached = False
         self.button_state = self.device["button1"].value
         self.extending = False
         self.force_sensor = ForceSensor(self.node["Colon"]["Collision"]["colon_col"])
-        self.position = self.node["Colon"]["Collision"]["colon_col"]["position"].value[4102]
+        self.exp_position = [self.node["Colon"]["Collision"]["colon_col"]["position"].value[4102],
+                             self.node["Colon"]["Collision"]["colon_col"]["position"].value[4120],
+                             self.node["Colon"]["Collision"]["colon_col"]["position"].value[4194]]
+        random.shuffle(self.exp_position)
+        self.exp_number = 0
         self.start_exp = False
     
     def onAnimateBeginEvent(self, event):
 
         pos = self.beam["position"].value[-1][1]
+        exp_position = self.exp_position[self.exp_number]
 
         if self.button_state != self.device["button1"].value and pos < self.limit:
             self.button_state = self.device["button1"].value
@@ -40,25 +50,41 @@ class ControlCatheter(SC.Controller):
             if not self.attached:
                 self.create_omni_attachment()
                 self.attached = True
-                self.draw_objective(self.position, "yellow")
+                self.draw_objective(exp_position, [0.3, 0.3, 1.0, 1.0])
             else:
                 self.generate_force(self.beam["position"].value[-1][:3], self.omni["position"].value[0][:3])
-                if np.linalg.norm(self.omni["position"].value[0][:3] - self.position) < 0.16 and not self.start_exp:
-                    print("Experiment starting!")
+                print(np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position))
+                if np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position) < 0.12 and not self.start_exp:
                     self.exp_time = 0
                     self.start_exp = True
                     self.exp_forces = []
-                    self.draw_objective(self.position, "green")
+                    self.draw_objective(exp_position, [0.1, 0.1, 1.0, 1.0])
+                
+                contact_force = self.force_sensor.step()
+
         
         if self.start_exp:
-            if self.exp_time < 5.0:
-                print("The experiment has been running for: ", self.exp_time)
+            if self.exp_time < 1.0:
                 self.exp_time += self.dt
-                contact_force = self.force_sensor.step(4102)
+                contact_force = self.force_sensor.step()
                 self.exp_forces.append(contact_force)
-            else:
-                print(self.exp_forces)
+                if contact_force >= 1.5 and contact_force < 5.0:
+                    self.draw_objective(exp_position, [0.1, 1.0, 0.1, 1.0])
+                elif contact_force >= 5.0:
+                    self.draw_objective(exp_position, "yellow")
+                else:
+                    self.draw_objective(exp_position, [0.1, 0.1, 1.0, 1.0])
 
+            else:
+                print("Experiment one finished!")
+                config.experiment_forces.append(self.exp_forces)
+                self.exp_number += 1
+                if self.exp_number == len(self.exp_position):
+                    config.done = True
+                else:
+                    self.draw_objective(self.exp_position[self.exp_number], [0.3, 0.3, 1.0, 1.0])
+                    self.start_exp = False
+                
         pass
     
     
@@ -78,11 +104,14 @@ class ControlCatheter(SC.Controller):
         return force / np.linalg.norm(force)
     
     def draw_objective(self, position, color):
-        objective = self.node.addChild("Objective")
-        objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
-        objective.addObject("OglModel", name="Visual", translation=self.position,  src="@sphere", scale=0.05, color=color)
-        objective.init()
-        SS.initVisual(objective)
+        if hasattr(self, "objective"):
+            self.node.removeChild(self.objective)
+
+        self.objective = self.node.addChild("Objective")
+        self.objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
+        self.objective.addObject("OglModel", name="Visual", translation=position,  src="@sphere", scale=0.04, color=color)
+        self.objective.init()
+        SS.initVisual(self.objective)
 
 class ForceSensor(object):
     def __init__(self, MO, numberDOFs = 3):
@@ -105,15 +134,12 @@ class ForceSensor(object):
                 contact_id = int(self.collisionMatrix[i][limit + 1])
                 self.sortedCollisionMatrix[contact_id] = self.sortedCollisionMatrix[contact_id] + np.array([float(self.collisionMatrix[i][limit + 3 + a]) for a in range(self.number_dofs)])
         
-        try:
-            return self.sortedCollisionMatrix
-        except UnboundLocalError:
-            pass
-        
-    
-    def step(self, idx_objective):
+
+        return self.sortedCollisionMatrix
+
+    def step(self):
         col_mat = self.get_forces()
-        return np.linalg.norm(col_mat[idx_objective])
+        return np.linalg.norm(col_mat)
         
     
     

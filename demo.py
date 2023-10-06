@@ -323,7 +323,7 @@ def createScene(root: SC.Node):
     colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=7e9, poissonRatio=0.45, method="large")
     colon.addObject("UniformMass", name="mass")
     colon.addObject("UncoupledConstraintCorrection", compliance=[2e-7], defaultCompliance=2e-7)
-    colon.addObject("BoxROI", name="box", box=[10, 1, 0, 12, 3, 2], drawBoxes=False)
+    colon.addObject("BoxROI", name="box", box=[9, 1, 0, 12, 4, 2, 11, -3, 0, 13.5, -0.5, 2], drawBoxes=True)
     colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
     # colon.addObject("RestShapeSpringsForceField", points="@box.indices", stiffness=1e12, angularStiffness=1e12)
     col_colon = colon.addChild("Collision", activated=True)
@@ -354,12 +354,12 @@ def main():
     move_camera = False
     paused = False
     change_view = False
-    clock = pygame.time.Clock()
+    # clock = pygame.time.Clock()
 
     pygame.mouse.set_pos(small_display_center)
 
     while not config.done:
-        clock.tick(100)
+        # clock.tick(60)
         SS.animate(root, root.getDt())
         SS.updateVisual(root)
         if not paused:
@@ -407,7 +407,7 @@ def main():
         ax = fig.add_subplot(111)
         ax.boxplot(config.experiment_forces, notch=False)
         plt.title(f"Your force based score is: {get_score(config.experiment_forces)}")
-        ax.set_xticklabels(["Objective 1", "Objective 2", "Objective 3"])
+        ax.set_xticklabels([f"Objective {i}" for i in range(len(config.experiment_forces))])
         ax.set_ylabel("Force on the wall (N)")
         plt.show()
 

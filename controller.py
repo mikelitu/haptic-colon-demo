@@ -12,7 +12,7 @@ experiment_forces = {}
 class ControlCatheter(SC.Controller):
     def __init__(self, *args, **kwargs):
         SC.Controller.__init__(self, *args, **kwargs)
-        self.limit = 0.425
+        self.limit = 0.45
         self.node = kwargs["node"]
 
         self.beam_node = self.node["InstrumentCombined"]
@@ -108,7 +108,7 @@ class ControlCatheter(SC.Controller):
 
         self.objective = self.node.addChild("Objective")
         self.objective.addObject("MeshOBJLoader", name="sphere", filename="mesh/sphere.obj")
-        self.objective.addObject("OglModel", name="Visual", translation=position,  src="@sphere", scale=0.06, color=color)
+        self.objective.addObject("OglModel", name="Visual", translation=position,  src="@sphere", scale=0.065, color=color)
         self.objective.init()
         SS.initVisual(self.objective)
 

@@ -53,7 +53,7 @@ class ControlCatheter(SC.Controller):
                 self.draw_objective(exp_position, [0.3, 0.3, 1.0, 1.0])
             else:
                 self.generate_force(self.beam["position"].value[-1][:3], self.omni["position"].value[0][:3])
-                if np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position) < 0.12 and not self.start_exp:
+                if np.linalg.norm(self.beam["position"].value[-1][:3] - exp_position) < 0.1 and not self.start_exp:
                     self.exp_time = 0
                     self.start_exp = True
                     self.exp_forces = []
@@ -75,7 +75,6 @@ class ControlCatheter(SC.Controller):
                     self.draw_objective(exp_position, [0.1, 0.1, 1.0, 1.0])
 
             else:
-                print("Experiment one finished!")
                 config.experiment_forces.append(self.exp_forces)
                 self.exp_number += 1
                 if self.exp_number == len(self.exp_position):

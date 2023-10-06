@@ -22,9 +22,9 @@ logo_dir = "logos/kings-logo.png"
 big_display_size = (1920, 1080)
 big_display_center = (big_display_size[0] // 2, big_display_size[1] // 2)
 big_position = [0, 0]
-small_display_size = (450, 500)
-small_position = [1920 - small_display_size[0], 1080 - small_display_size[1]]
-small_display_center = (small_position[0] + small_display_size[0] // 2, small_display_size[1] // 2)
+# small_display_size = (450, 500)
+# small_position = [1920 - small_display_size[0], 1080 - small_display_size[1]]
+# small_display_center = (small_position[0] + small_display_size[0] // 2, small_display_size[1] // 2)
 deb_flags = pygame.DOUBLEBUF | pygame.OPENGL
 flags = pygame.DOUBLEBUF | pygame.OPENGL | pygame.FULLSCREEN
 up_down_angle = 0
@@ -49,13 +49,13 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     pygame.display.init()
     pygame.display.set_mode(big_display_size, deb_flags)
     pygame.display.set_caption("Colon simulation")
-    pygame.mouse.set_visible(True)
+    pygame.mouse.set_visible(False)
     glClearColor(1, 1, 1, 1)
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     create_sofa_window(big_position, big_display_size, node)
-    create_sofa_window(small_position, small_display_size, node, True)
+    # create_sofa_window(small_position, small_display_size, node, True)
 
     pygame.display.flip()
 
@@ -111,70 +111,70 @@ def simple_render(rootNode: SC.Node, im_loader: ImageLoader, mouse_move: List[in
     SG.draw(rootNode)
     glPopMatrix()
     
-    glClear(GL_DEPTH_BUFFER_BIT)
-    # glEnable(GL_SCISSOR_TEST)
-    # glScissor(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
-    # glClearColor(1, 1, 1, 1)
-    glViewport(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
-    # glColor(1, 1, 1, 1)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluOrtho2D(0, small_display_size[0], small_display_size[1], 1)
-    glMatrixMode(GL_MODELVIEW)
-
-    # Draw the logo
-    glLoadIdentity()
-    glDisable(GL_DEPTH_TEST)
-    glEnable(GL_BLEND)
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-    
-    glEnable(GL_DEPTH_TEST)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective(45, (small_display_size[0] / small_display_size[1]), 0.1, 100.0)
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    
-    # Get the projection from the Sofa scene
-    cameraMVM = rootNode.global_camera.getOpenGLModelViewMatrix()
-    glMultMatrixf(cameraMVM)
-    glMatrixMode(GL_MODELVIEW)  
-    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
-
-    
-    #### Start the camera movement ####
-    glPushMatrix()
-    # glMultMatrixf(cur_view)
+    # glClear(GL_DEPTH_BUFFER_BIT)
+    # # glEnable(GL_SCISSOR_TEST)
+    # # glScissor(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
+    # # glClearColor(1, 1, 1, 1)
+    # glViewport(small_position[0], small_position[1], small_display_size[0], small_display_size[1])
+    # # glColor(1, 1, 1, 1)
+    # glMatrixMode(GL_PROJECTION)
     # glLoadIdentity()
+    # gluOrtho2D(0, small_display_size[0], small_display_size[1], 1)
+    # glMatrixMode(GL_MODELVIEW)
 
-    # Move the object around
-    if keypress[pygame.K_w]:
-        translation[2] += 0.1
-    if keypress[pygame.K_s]:
-        translation[2] -= 0.1
-    if keypress[pygame.K_d]:
-        translation[0] -= 0.1
-    if keypress[pygame.K_a]:
-        translation[0] += 0.1
+    # # Draw the logo
+    # glLoadIdentity()
+    # glDisable(GL_DEPTH_TEST)
+    # glEnable(GL_BLEND)
+    # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    # # Zoom the object with the mouse wheel
-    in_out_zoom += zoom_mouse * 0.5
-    glTranslatef(in_out_zoom, translation[2], translation[0])
-
-    # Rotate the object from left to right
-    left_right_angle += mouse_move[0]*0.05
-    glRotatef(left_right_angle, 0.0, 1.0, 0.0)
-
-    # Rotate the object up and down
-    up_down_angle -= mouse_move[1]*0.05
-    glRotatef(up_down_angle, 0.0, 0.0, 1.0)
-
-    glMultMatrixf(view_matrix)
-    view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
     
-    SG.draw(rootNode)
-    glPopMatrix()
+    # glEnable(GL_DEPTH_TEST)
+    # glMatrixMode(GL_PROJECTION)
+    # glLoadIdentity()
+    # gluPerspective(45, (small_display_size[0] / small_display_size[1]), 0.1, 100.0)
+    # glMatrixMode(GL_MODELVIEW)
+    # glLoadIdentity()
+    
+    # # Get the projection from the Sofa scene
+    # cameraMVM = rootNode.global_camera.getOpenGLModelViewMatrix()
+    # glMultMatrixf(cameraMVM)
+    # glMatrixMode(GL_MODELVIEW)  
+    # view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+
+    
+    # #### Start the camera movement ####
+    # glPushMatrix()
+    # # glMultMatrixf(cur_view)
+    # # glLoadIdentity()
+
+    # # Move the object around
+    # if keypress[pygame.K_w]:
+    #     translation[2] += 0.1
+    # if keypress[pygame.K_s]:
+    #     translation[2] -= 0.1
+    # if keypress[pygame.K_d]:
+    #     translation[0] -= 0.1
+    # if keypress[pygame.K_a]:
+    #     translation[0] += 0.1
+
+    # # # Zoom the object with the mouse wheel
+    # in_out_zoom += zoom_mouse * 0.5
+    # glTranslatef(in_out_zoom, translation[2], translation[0])
+
+    # # Rotate the object from left to right
+    # left_right_angle += mouse_move[0]*0.05
+    # glRotatef(left_right_angle, 0.0, 1.0, 0.0)
+
+    # # Rotate the object up and down
+    # up_down_angle -= mouse_move[1]*0.05
+    # glRotatef(up_down_angle, 0.0, 0.0, 1.0)
+
+    # glMultMatrixf(view_matrix)
+    # view_matrix = glGetFloatv(GL_MODELVIEW_MATRIX)
+    
+    # SG.draw(rootNode)
+    # glPopMatrix()
 
     pygame.display.flip()
 
@@ -237,7 +237,8 @@ def createScene(root: SC.Node):
     # place light and a camera
     root.addObject("LightManager")
     root.addObject("DirectionalLight", name="spotlight", color=[1, 1, 1, 0.1], direction=[0,-1,0])
-    # root.addObject("DirectionalLight", name="light", color=[1, 1., 1., 0.01], direction=[0, 0, -1])
+
+    # Place the two different cameras
     root.addObject("InteractiveCamera", name="global_camera", position=[10, 0, 0],
                             lookAt=[0,0,0], distance=15,
                             fieldOfView=45, zNear=0.63, zFar=100)
@@ -246,25 +247,24 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 1.0, 0.0], orientationBase=get_device_orientation(),
+    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 0.85, 0.25], orientationBase=get_device_orientation(),
                    maxInputForceFeedback = 0.5)
     
     omni = root.addChild("Omni")
     omni.addObject("MechanicalObject", template="Rigid3d", name="DOFs", position="@GeomagicDevice.positionDevice")
 
     omni_instrument = root.addChild("Instrument")
-    omni_instrument.addObject("EulerImplicitSolver", rayleighMass=0.01, rayleighStiffness=0.1)
+    omni_instrument.addObject("EulerImplicitSolver", rayleighMass=0.1, rayleighStiffness=0.1)
     omni_instrument.addObject("SparseLDLSolver", template="CompressedRowSparseMatrixMat3x3d")
     omni_instrument.addObject("MechanicalObject", name="instrumentState", template="Rigid3d", position="@../GeomagicDevice.positionBase")
-    omni_instrument.addObject("UniformMass", name="mass", totalMass=0.5)
+    omni_instrument.addObject("UniformMass", name="mass", totalMass=1.0)
     omni_instrument.addObject("RestShapeSpringsForceField", stiffness=1e10, angularStiffness=1e10, external_rest_shape="@../Omni/DOFs", points=0, external_points=0)
     omni_instrument.addObject("LCPForceFeedback", name="LCPFF", activate=True, forceCoef=7.5e-8, printLog=False)
-    # omni_instrument.addObject("SphereCollisionModel", radius=0.05, group=1, contactStiffness=1e2)
     omni_instrument.addObject("LinearSolverConstraintCorrection")
     
     omni_collision = omni_instrument.addChild("Collision", activated=False)
     omni_collision.addObject("MechanicalObject", template="Vec3d", position="@../../GeomagicDevice.positionBase")
-    omni_collision.addObject("SphereCollisionModel", radius=0.0425, group=1)
+    omni_collision.addObject("SphereCollisionModel", radius=0.045, group=1)
     omni_collision.addObject("IdentityMapping")
     
     topoLines_cath = root.addChild('topoLines_cath')
@@ -278,7 +278,7 @@ def createScene(root: SC.Node):
     RefStartingPos.addObject('MechanicalObject', name="ReferencePos", template="Rigid3d", position=[9.7, -1.0, 0.0, 0.0, 0.0, 0.707, 0.707])
 
     InstrumentCombined = root.addChild('InstrumentCombined')
-    InstrumentCombined.addObject('EulerImplicitSolver', rayleighStiffness="0.5", rayleighMass="0.1", printLog=False )
+    InstrumentCombined.addObject('EulerImplicitSolver', rayleighStiffness="0.4", rayleighMass="0.1", printLog=False)
     InstrumentCombined.addObject('BTDLinearSolver')
     InstrumentCombined.addObject('RegularGridTopology', name="meshLinesCombined", nx="100", ny="1", nz="1")
     InstrumentCombined.addObject('MechanicalObject', template="Rigid3d", name="DOFs", rz=90)
@@ -312,20 +312,16 @@ def createScene(root: SC.Node):
     realVisuInstrumentCombined.addObject('IdentityMapping', input="@../Quads", output="@VisualCathOGL")
 
     
-
     colon = root.addChild("Colon")
     colon.addObject("EulerImplicitSolver", rayleighMass=0.1, rayleighStiffness=0.1)
     colon.addObject("CGLinearSolver", iterations=25, tolerance=1e-10, threshold=1e-10)
-    # colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     colon.addObject("SparseGridTopology", name="sp_grid", n=[6, 6, 12], fileTopology="mesh/partial-colon-decimate_05.obj")
-    # colon.addObject("MeshTopology", src="@loader")
     colon.addObject("MechanicalObject", name="colon_dof", topology="@sp_grid", template="Vec3d", rx=-90, ry=30, rz=0, dx=12, dy=1, scale=0.0275)
     colon.addObject("TetrahedronFEMForceField", name="FEM", youngModulus=7e9, poissonRatio=0.45, method="large")
     colon.addObject("UniformMass", name="mass")
     colon.addObject("UncoupledConstraintCorrection", compliance=[2e-7], defaultCompliance=2e-7)
-    colon.addObject("BoxROI", name="box", box=[9, 1, 0, 12, 4, 2, 11, -3, 0, 13.5, -0.5, 2], drawBoxes=True)
+    colon.addObject("BoxROI", name="box", box=[9, 1, 0, 12, 4, 2, 11, -3, 0, 13.5, -0.5, 2], drawBoxes=False)
     colon.addObject("FixedConstraint", name="fixed", indices="@box.indices")
-    # colon.addObject("RestShapeSpringsForceField", points="@box.indices", stiffness=1e12, angularStiffness=1e12)
     col_colon = colon.addChild("Collision", activated=True)
     col_colon.addObject("MeshOBJLoader", name="loader", filename="mesh/partial-colon-decimate_05.obj")
     col_colon.addObject("MeshTopology", src="@loader")
@@ -353,10 +349,10 @@ def main():
     zoom_mouse = 0.0
     move_camera = False
     paused = False
-    change_view = False
+    # change_view = False
     # clock = pygame.time.Clock()
 
-    pygame.mouse.set_pos(small_display_center)
+    # pygame.mouse.set_pos(small_display_center)
 
     while not config.done:
         # clock.tick(60)
@@ -372,26 +368,26 @@ def main():
                     config.done = True
                 if event.key == pygame.K_PAUSE or event.key == pygame.K_p:
                     paused = not paused
-                    pygame.mouse.set_pos(small_display_center)
-            if not paused:
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        move_camera = True
-                    elif event.button == 3:
-                        change_view = not change_view
+                    # pygame.mouse.set_pos(small_display_center)
+            # if not paused:
+            #     if event.type == pygame.MOUSEBUTTONDOWN:
+            #         if event.button == 1:
+            #             move_camera = True
+            #         elif event.button == 3:
+            #             change_view = not change_view
                     
-                elif event.type == pygame.MOUSEBUTTONUP:
-                    if event.button == 1:
-                        move_camera = False
-                if event.type == pygame.MOUSEWHEEL:
-                    zoom_mouse = event.y
+            #     elif event.type == pygame.MOUSEBUTTONUP:
+            #         if event.button == 1:
+            #             move_camera = False
+            #     if event.type == pygame.MOUSEWHEEL:
+            #         zoom_mouse = event.y
 
-                if not move_camera:
-                    continue
+            #     if not move_camera:
+            #         continue
 
-                if event.type == pygame.MOUSEMOTION:
-                    mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
-                    pygame.mouse.set_pos(small_display_center)
+            #     if event.type == pygame.MOUSEMOTION:
+            #         mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
+            #         pygame.mouse.set_pos(small_display_center)
 
         time.sleep(root.getDt())
     

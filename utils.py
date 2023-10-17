@@ -5,6 +5,9 @@ import Sofa.SofaGL as SG
 import Sofa.Simulation as SS
 from scipy.spatial.transform import Rotation
 import re
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import numpy as np
 
 class ImageLoader:
     
@@ -198,4 +201,25 @@ def get_score(forces):
     for f in forces:
         if f >= 1.5 and f < 5.0:
             score += 1
-    return (score / len(forces)) * 100
+    return round((score / len(forces)) * 100, 1)
+
+def plot_forces(experiment_forces):
+    cmap, norm = mcolors.from_levels_and_colors([0, 1.5, 5.0, max(np.max(experiment_forces), 5.1)], ["blue", "green", "yellow"])
+    fig = plt.figure(figsize=(15, 10))
+    
+    ax1 = fig.add_subplot(311)
+    ax1.scatter(0.01 * np.arange(0, len(experiment_forces[0])), experiment_forces[0], c=experiment_forces[0], cmap=cmap, norm=norm, marker="o")
+    ax1.set_ylim([-0.5, np.max(experiment_forces) + 0.5])
+    
+    ax2 = fig.add_subplot(312)
+    ax2.scatter(0.01 * np.arange(0, len(experiment_forces[1])), experiment_forces[1], c=experiment_forces[1], cmap=cmap, norm=norm, marker="o")
+    ax2.set_ylim([-0.5, np.max(experiment_forces) + 0.5])
+
+    ax3 = fig.add_subplot(313)
+    ax3.scatter(0.01 * np.arange(0, len(experiment_forces[2])), experiment_forces[2], c=experiment_forces[2], cmap=cmap, norm=norm, marker="o")
+    ax3.set_ylim([-0.5, np.max(experiment_forces) + 0.5])
+
+    fig.suptitle(f"Your force based score is: {get_score(experiment_forces)}/100.0", fontsize=24, fontweight="bold")
+    fig.supxlabel("Time (s)", fontsize=18, fontweight="bold")
+    fig.supylabel("Force (N)", fontsize=18, fontweight="bold")
+    plt.show()

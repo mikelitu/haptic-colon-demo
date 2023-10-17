@@ -12,7 +12,7 @@ experiment_forces = {}
 class ControlCatheter(SC.Controller):
     def __init__(self, *args, **kwargs):
         SC.Controller.__init__(self, *args, **kwargs)
-        self.limit = 0.45
+        self.limit = 0.53
         self.node = kwargs["node"]
 
         self.beam_node = self.node["InstrumentCombined"]
@@ -137,7 +137,7 @@ class ForceSensor(object):
 
     def step(self):
         col_mat = self.get_forces()
-        return np.linalg.norm(col_mat)
+        return 0.6 * np.linalg.norm(col_mat)
         
     
     

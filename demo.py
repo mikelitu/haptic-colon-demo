@@ -9,11 +9,13 @@ import pygame
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from typing import List
-from utils import ImageLoader, create_sofa_window, get_device_orientation, get_score
+from utils import ImageLoader, create_sofa_window, get_device_orientation, plot_forces
 from controller import ControlCatheter
 import config
 import pyOpenHaptics.hd as hd
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import numpy as np
 
 # Directory to the different logos
 logo_dir = "logos/kings-logo.png"
@@ -22,9 +24,9 @@ logo_dir = "logos/kings-logo.png"
 big_display_size = (1920, 1080)
 big_display_center = (big_display_size[0] // 2, big_display_size[1] // 2)
 big_position = [0, 0]
-# small_display_size = (450, 500)
-# small_position = [1920 - small_display_size[0], 1080 - small_display_size[1]]
-# small_display_center = (small_position[0] + small_display_size[0] // 2, small_display_size[1] // 2)
+small_display_size = (450, 500)
+small_position = [1920 - small_display_size[0], 1080 - small_display_size[1]]
+small_display_center = (small_position[0] + small_display_size[0] // 2, small_display_size[1] // 2)
 deb_flags = pygame.DOUBLEBUF | pygame.OPENGL
 flags = pygame.DOUBLEBUF | pygame.OPENGL | pygame.FULLSCREEN
 up_down_angle = 0
@@ -55,7 +57,7 @@ def init_display(node: SC.Node, im_loader: ImageLoader):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     create_sofa_window(big_position, big_display_size, node)
-    # create_sofa_window(small_position, small_display_size, node, True)
+    create_sofa_window(small_position, small_display_size, node, True)
 
     pygame.display.flip()
 
@@ -247,8 +249,8 @@ def createScene(root: SC.Node):
                    lookAt=[0.1,0.1,0], distance=0,
                    fieldOfView=45, zNear=0.63, zFar=100)
     
-    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.05, drawDevice=0, drawDeviceFrame=0, positionBase=[9.7, 0.85, 0.25], orientationBase=get_device_orientation(),
-                   maxInputForceFeedback = 0.5)
+    root.addObject("GeomagicDriver", name="GeomagicDevice", deviceName="Default Device", scale=0.085, drawDevice=0, drawDeviceFrame=1, positionBase=[9.8, 1.0, 0.], orientationBase=get_device_orientation(),
+                   maxInputForceFeedback = 0.35)
     
     omni = root.addChild("Omni")
     omni.addObject("MechanicalObject", template="Rigid3d", name="DOFs", position="@GeomagicDevice.positionDevice")
@@ -264,7 +266,7 @@ def createScene(root: SC.Node):
     
     omni_collision = omni_instrument.addChild("Collision", activated=False)
     omni_collision.addObject("MechanicalObject", template="Vec3d", position="@../../GeomagicDevice.positionBase")
-    omni_collision.addObject("SphereCollisionModel", radius=0.045, group=1)
+    omni_collision.addObject("SphereCollisionModel", radius=0.05, group=1)
     omni_collision.addObject("IdentityMapping")
     
     topoLines_cath = root.addChild('topoLines_cath')
@@ -368,26 +370,26 @@ def main():
                     config.done = True
                 if event.key == pygame.K_PAUSE or event.key == pygame.K_p:
                     paused = not paused
-                    # pygame.mouse.set_pos(small_display_center)
-            # if not paused:
-            #     if event.type == pygame.MOUSEBUTTONDOWN:
-            #         if event.button == 1:
-            #             move_camera = True
-            #         elif event.button == 3:
-            #             change_view = not change_view
+        #             pygame.mouse.set_pos(small_display_center)
+        #     if not paused:
+        #         if event.type == pygame.MOUSEBUTTONDOWN:
+        #             if event.button == 1:
+        #                 move_camera = True
+        #             elif event.button == 3:
+        #                 change_view = not change_view
                     
-            #     elif event.type == pygame.MOUSEBUTTONUP:
-            #         if event.button == 1:
-            #             move_camera = False
-            #     if event.type == pygame.MOUSEWHEEL:
-            #         zoom_mouse = event.y
+        #         elif event.type == pygame.MOUSEBUTTONUP:
+        #             if event.button == 1:
+        #                 move_camera = False
+        #         if event.type == pygame.MOUSEWHEEL:
+        #             zoom_mouse = event.y
 
-            #     if not move_camera:
-            #         continue
+        #         if not move_camera:
+        #             continue
 
-            #     if event.type == pygame.MOUSEMOTION:
-            #         mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
-            #         pygame.mouse.set_pos(small_display_center)
+        #         if event.type == pygame.MOUSEMOTION:
+        #             mouse_move = [event.pos[i] - small_display_center[i] for i in range(2)]
+        #             pygame.mouse.set_pos(small_display_center)
 
         time.sleep(root.getDt())
     
@@ -399,13 +401,7 @@ def main():
     pygame.quit()
 
     if len(config.experiment_forces) != 0:
-        fig = plt.figure(figsize=(15, 10))
-        ax = fig.add_subplot(111)
-        ax.boxplot(config.experiment_forces, notch=False)
-        plt.title(f"Your force based score is: {get_score(config.experiment_forces)}")
-        ax.set_xticklabels([f"Objective {i}" for i in range(len(config.experiment_forces))])
-        ax.set_ylabel("Force on the wall (N)")
-        plt.show()
+        plot_forces(config.experiment_forces)
 
 if __name__ == "__main__":
     time.sleep(0.4)
